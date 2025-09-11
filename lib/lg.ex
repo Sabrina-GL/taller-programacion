@@ -60,14 +60,8 @@ defmodule Ledger do
 
     leer_archivo(t)
     |> Enum.filter(fn linea ->
-      # id_transaccion = Enum.at(linea, 0)
-      # timestamp = Enum.at(linea, 1)
-      # moneda_origen = Enum.at(linea, 2)
-      # moneda_destino = Enum.at(linea, 3)
-      # monto = Enum.at(linea, 4)
       cuenta_origen = Enum.at(linea, 5)
       cuenta_destino = Enum.at(linea, 6)
-      # tipo = Enum.at(linea, 7)
 
       case {c1, c2} do
         {"", ""} -> true
@@ -94,24 +88,21 @@ defmodule Ledger do
         Map.put(acc, Enum.at(linea, 0), parsear_monto(Enum.at(linea, 1)))
       end)
 
-    leer_archivo(t)
-    |> Enum.reduce(%{}, fn linea, acc ->
-      # id_transaccion = Enum.at(linea, 0)
-      # timestamp = Enum.at(linea, 1)
-      moneda_origen = Enum.at(linea, 2)
-      moneda_destino = Enum.at(linea, 3)
-      monto = Enum.at(linea, 4)
-      cuenta_origen = Enum.at(linea, 5)
-      cuenta_destino = Enum.at(linea, 6)
-      tipo = Enum.at(linea, 7)
+    resultado =
+      leer_archivo(t)
+      |> Enum.reduce(%{}, fn linea, acc ->
+        tipo = Enum.at(linea, 7)
 
-      acc =
-        Map.update(acc, c1, 0.0, fn valor_actual ->
-          valor_actual + valor_transaccion(tipo, linea, c1, m, monedas)
-        end)
+        nuevo_acc =
+          Map.merge(acc, valor_transaccion(tipo, linea, c1, monedas), fn _k, v1, v2 ->
+            v1 + v2
+          end)
 
-      IO.inspect(acc)
-    end)
+        IO.inspect(nuevo_acc)
+        nuevo_acc
+      end)
+
+    mostrar_balance(m, resultado, monedas, o)
   end
 
   defp parsear_monto(monto) do
@@ -125,7 +116,7 @@ defmodule Ledger do
     monto * Map.get(monedas, moneda_destino) / Map.get(monedas, moneda_origen)
   end
 
-  defp valor_transaccion("transferencia", linea, cuenta, moneda, monedas) do
+  defp valor_transaccion("transferencia", linea, cuenta, _monedas) do
     moneda_origen = Enum.at(linea, 2)
     moneda_destino = Enum.at(linea, 3)
     monto = parsear_monto(Enum.at(linea, 4))
@@ -135,29 +126,46 @@ defmodule Ledger do
     # if moneda_orgien != moneda_destino -> error
     # if cualquier moneda not in monedas.csv -> error
 
-    case cuenta do
-      ^cuenta_origen -> monto
-      ^cuenta_destino -> -monto
-      _ -> 0.0
+    cond do
+      cuenta == cuenta_origen -> %{moneda_origen => -monto}
+      cuenta == cuenta_destino -> %{moneda_destino => monto}
+      true -> %{}
     end
-    |> cambiar_a_moneda(moneda_origen, moneda, monedas)
+
+    # |> cambiar_a_moneda(moneda_origen, moneda, monedas)
   end
 
-  defp valor_transaccion("alta_cuenta", linea, cuenta) do
+  defp valor_transaccion("alta_cuenta", linea, cuenta, _monedas) do
+    moneda = Enum.at(linea, 2)
     monto = parsear_monto(Enum.at(linea, 4))
     cuenta_origen = Enum.at(linea, 5)
 
-    case cuenta do
-      ^cuenta_origen -> monto
-      _ -> 0.0
+    cond do
+      cuenta == cuenta_origen -> %{moneda => monto}
+      true -> %{}
     end
   end
 
-  defp valor_transaccion("swap", linea, cuenta) do
+  defp valor_transaccion("swap", linea, cuenta, monedas) do
+    moneda_origen = Enum.at(linea, 2)
+    moneda_destino = Enum.at(linea, 3)
+    monto = parsear_monto(Enum.at(linea, 4))
+    cuenta_origen = Enum.at(linea, 5)
+
+    cond do
+      cuenta == cuenta_origen ->
+        %{
+          moneda_origen => -monto,
+          moneda_destino => cambiar_a_moneda(monto, moneda_origen, moneda_destino, monedas)
+        }
+
+      true ->
+        %{}
+    end
   end
 
-  defp valor_transaccion(tipo, linea, cuenta, a, b) do
-    0
+  defp valor_transaccion(tipo, linea, _cuenta, _monedas) do
+    %{}
   end
 
   defp leer_archivo(archivo) do
@@ -166,11 +174,32 @@ defmodule Ledger do
     |> Enum.map(fn linea -> String.split(linea, ";") end)
   end
 
-  defp mostrar_linea(linea, "stdout") do
-    IO.inspect(linea)
+  defp mostrar_linea(linea, archivo) do
+    cond do
+      archivo == "stdout" -> IO.puts(linea)
+      true -> File.write!(archivo, Enum.join(linea, ";") <> "\n", [:append])
+    end
   end
 
-  defp mostrar_linea(linea, archivo) do
-    File.write!(archivo, Enum.join(linea, ";") <> "\n", [:append])
+  defp mostrar_linea_balance(moneda, monto, archivo) do
+    cond do
+      archivo == "stdout" -> IO.puts("#{moneda}=#{monto}")
+      true -> File.write!(archivo, "#{moneda}=#{monto}" <> "\n", [:append])
+    end
+  end
+
+  defp mostrar_balance(moneda \\ "", montos, monedas, archivo) do
+    if moneda != "" do
+      total =
+        Enum.reduce(montos, 0.0, fn {moneda_actual, monto}, acc2 ->
+          acc2 + cambiar_a_moneda(monto, moneda_actual, moneda, monedas)
+        end)
+
+      mostrar_linea_balance(moneda, total, archivo)
+    else
+      Enum.each(montos, fn {moneda_actual, monto} ->
+        mostrar_linea_balance(moneda_actual, monto, archivo)
+      end)
+    end
   end
 end
