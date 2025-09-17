@@ -18,7 +18,20 @@ defmodule Ledger do
 
   def main(args \\ System.argv()) do
     flags = procesar_argumentos(args)
-    efectuar_comando(flags)
+    monedas = procesar_monedas()
+    arch_transacciones = Map.get(flags, "t", "./transacciones.csv")
+
+    case procesar_transacciones(arch_transacciones, monedas) do
+      {:error, nro_linea} -> {:error, nro_linea}
+      cuentas -> efectuar_comando(flags, cuentas, monedas)
+    end
+  end
+
+  defp procesar_monedas() do
+    leer_archivo("./monedas.csv")
+    |> Enum.reduce(%{}, fn linea, acc ->
+      Map.put(acc, Enum.at(linea, 0), parsear_monto(Enum.at(linea, 1)))
+    end)
   end
 
   defp procesar_argumentos(args) do
@@ -38,71 +51,84 @@ defmodule Ledger do
     Map.put(flags, "comando", comando)
   end
 
-  defp efectuar_comando(flags) do
+  defp efectuar_comando(flags, cuentas, monedas) do
     case flags["comando"] do
       "transacciones" ->
-        listar_transacciones(flags)
+        listar_transacciones(flags, cuentas)
 
       "balance" ->
-        listar_balance(flags)
+        listar_balance(flags, cuentas, monedas)
 
-      # PRINt comando invalido
       _ ->
-        nil
+        {:error, 0}
     end
   end
 
-  defp listar_transacciones(flags) do
+  defp procesar_transacciones(arch_transacciones, monedas) do
+    leer_archivo(arch_transacciones)
+    |> Enum.reduce_while(%{}, fn linea, cuentas ->
+      nro = Enum.at(linea, 0)
+      tipo = Enum.at(linea, 7)
+
+      case valor_transaccion(tipo, cuentas, linea, nro, monedas) do
+        {:ok, cuentas_actualizadas} ->
+          {:cont, cuentas_actualizadas}
+
+        {:error, nro_linea} ->
+          IO.inspect({:error, nro_linea})
+          {:halt, {:error, nro_linea}}
+      end
+    end)
+  end
+
+  defp listar_transacciones(flags, cuentas) do
     c1 = Map.get(flags, "c1", "")
     c2 = Map.get(flags, "c2", "")
     t = Map.get(flags, "t", "./transacciones.csv")
     o = Map.get(flags, "o", "stdout")
 
-    leer_archivo(t)
-    |> Enum.filter(fn linea ->
-      cuenta_origen = Enum.at(linea, 5)
-      cuenta_destino = Enum.at(linea, 6)
+    cond do
+      not Map.has_key?(cuentas, c1) or not Map.has_key?(cuentas, c2) ->
+        {:error, 0}
 
-      case {c1, c2} do
-        {"", ""} -> true
-        {co, cd} when co == cuenta_origen and cd == cuenta_destino -> true
-        {co, ""} when co == cuenta_origen -> true
-        {"", cd} when cd == cuenta_destino -> true
-        _ -> false
-      end
-    end)
-    |> Enum.each(fn linea -> mostrar_linea(linea, o) end)
+      true ->
+        leer_archivo(t)
+        |> Enum.filter(fn linea ->
+          cuenta_origen = Enum.at(linea, 5)
+          cuenta_destino = Enum.at(linea, 6)
+
+          case {c1, c2} do
+            {"", ""} -> true
+            {co, cd} when co == cuenta_origen and cd == cuenta_destino -> true
+            {co, ""} when co == cuenta_origen -> true
+            {"", cd} when cd == cuenta_destino -> true
+            _ -> false
+          end
+        end)
+        |> Enum.each(fn linea -> mostrar_linea(linea, o) end)
+
+        {:ok, 0}
+    end
   end
 
-  defp listar_balance(flags) do
-    # si no hay c1 error
+  defp listar_balance(flags, cuentas, monedas) do
     c1 = Map.get(flags, "c1", "")
     m = Map.get(flags, "m", "")
-    t = Map.get(flags, "t", "./transacciones.csv")
     o = Map.get(flags, "o", "stdout")
-    balance = %{}
 
-    monedas =
-      leer_archivo("./monedas.csv")
-      |> Enum.reduce(%{}, fn linea, acc ->
-        Map.put(acc, Enum.at(linea, 0), parsear_monto(Enum.at(linea, 1)))
-      end)
+    cond do
+      c1 == "" or not Map.has_key?(cuentas, c1) ->
+        {:error, 0}
 
-    resultado =
-      leer_archivo(t)
-      |> Enum.reduce(%{}, fn linea, acc ->
-        tipo = Enum.at(linea, 7)
+      m != "" and not Map.has_key?(monedas, m) ->
+        {:error, 0}
 
-        nuevo_acc =
-          Map.merge(acc, valor_transaccion(tipo, linea, c1, monedas), fn _k, v1, v2 ->
-            v1 + v2
-          end)
+      true ->
+        balance_cuenta = Map.get(cuentas, c1, %{})
+        mostrar_balance(m, balance_cuenta, monedas, o)
 
-        IO.inspect(nuevo_acc)
-        nuevo_acc
-      end)
-
-    mostrar_balance(m, resultado, monedas, o)
+        {:ok, 0}
+    end
   end
 
   defp parsear_monto(monto) do
@@ -116,56 +142,106 @@ defmodule Ledger do
     monto * Map.get(monedas, moneda_destino) / Map.get(monedas, moneda_origen)
   end
 
-  defp valor_transaccion("transferencia", linea, cuenta, _monedas) do
+  defp valor_transaccion("transferencia", cuentas, linea, nro_linea, monedas) do
     moneda_origen = Enum.at(linea, 2)
     moneda_destino = Enum.at(linea, 3)
     monto = parsear_monto(Enum.at(linea, 4))
     cuenta_origen = Enum.at(linea, 5)
     cuenta_destino = Enum.at(linea, 6)
 
-    # if moneda_orgien != moneda_destino -> error
-    # if cualquier moneda not in monedas.csv -> error
-
     cond do
-      cuenta == cuenta_origen -> %{moneda_origen => -monto}
-      cuenta == cuenta_destino -> %{moneda_destino => monto}
-      true -> %{}
+      not Map.has_key?(cuentas, cuenta_origen) or not Map.has_key?(cuentas, cuenta_destino) ->
+        {:error, nro_linea}
+
+      moneda_origen != moneda_destino ->
+        {:error, nro_linea}
+
+      not Map.has_key?(monedas, moneda_origen) ->
+        {:error, nro_linea}
+
+      not Map.has_key?(cuentas[cuenta_origen], moneda_origen) or
+          cuentas[cuenta_origen][moneda_origen] < monto ->
+        {:error, nro_linea}
+
+      monto <= 0.0 ->
+        {:error, nro_linea}
+
+      true ->
+        cuentas_actualizadas =
+          Map.update(cuentas, cuenta_origen, %{}, fn mapa_cuenta ->
+            Map.update(mapa_cuenta, moneda_origen, 0.0, fn monto_actual ->
+              monto_actual - monto
+            end)
+          end)
+
+        cuentas_actualizadas =
+          Map.update(cuentas_actualizadas, cuenta_destino, %{}, fn mapa_cuenta ->
+            Map.update(mapa_cuenta, moneda_destino, 0.0, fn monto_actual ->
+              monto_actual + monto
+            end)
+          end)
+
+        {:ok, cuentas_actualizadas}
     end
 
     # |> cambiar_a_moneda(moneda_origen, moneda, monedas)
   end
 
-  defp valor_transaccion("alta_cuenta", linea, cuenta, _monedas) do
+  defp valor_transaccion("alta_cuenta", cuentas, linea, nro_linea, _monedas) do
     moneda = Enum.at(linea, 2)
     monto = parsear_monto(Enum.at(linea, 4))
-    cuenta_origen = Enum.at(linea, 5)
+    cuenta = Enum.at(linea, 5)
 
     cond do
-      cuenta == cuenta_origen -> %{moneda => monto}
-      true -> %{}
+      Map.has_key?(cuentas, cuenta) ->
+        {:error, nro_linea}
+
+      true ->
+        valor_cuenta = %{moneda => monto}
+        {:ok, Map.put(cuentas, cuenta, valor_cuenta)}
     end
   end
 
-  defp valor_transaccion("swap", linea, cuenta, monedas) do
+  defp valor_transaccion("swap", cuentas, linea, nro_linea, monedas) do
     moneda_origen = Enum.at(linea, 2)
     moneda_destino = Enum.at(linea, 3)
     monto = parsear_monto(Enum.at(linea, 4))
-    cuenta_origen = Enum.at(linea, 5)
+    cuenta = Enum.at(linea, 5)
 
     cond do
-      cuenta == cuenta_origen ->
-        %{
-          moneda_origen => -monto,
-          moneda_destino => cambiar_a_moneda(monto, moneda_origen, moneda_destino, monedas)
-        }
+      not Map.has_key?(cuentas, cuenta) ->
+        {:error, nro_linea}
+
+      not Map.has_key?(monedas, moneda_origen) or not Map.has_key?(monedas, moneda_destino) ->
+        {:error, nro_linea}
+
+      not Map.has_key?(cuentas[cuenta], moneda_origen) or cuentas[cuenta][moneda_origen] < monto ->
+        {:error, nro_linea}
+
+      monto <= 0.0 ->
+        {:error, nro_linea}
 
       true ->
-        %{}
+        cuentas_actualizadas =
+          Map.update(cuentas, cuenta, %{}, fn mapa_cuenta ->
+            Map.update(mapa_cuenta, moneda_origen, 0.0, fn monto_actual ->
+              monto_actual - monto
+            end)
+          end)
+
+        cuentas_actualizadas =
+          Map.update(cuentas_actualizadas, cuenta, %{}, fn mapa_cuenta ->
+            Map.update(mapa_cuenta, moneda_destino, 0.0, fn monto_actual ->
+              monto_actual + cambiar_a_moneda(monto, moneda_origen, moneda_destino, monedas)
+            end)
+          end)
+
+        {:ok, cuentas_actualizadas}
     end
   end
 
-  defp valor_transaccion(tipo, linea, _cuenta, _monedas) do
-    %{}
+  defp valor_transaccion(_tipo, _cuentas, _linea, nro_linea, _monedas) do
+    {:error, nro_linea}
   end
 
   defp leer_archivo(archivo) do
@@ -182,13 +258,15 @@ defmodule Ledger do
   end
 
   defp mostrar_linea_balance(moneda, monto, archivo) do
+    monto_decimales = :io_lib.format("~.6f", [monto]) |> to_string()
+
     cond do
-      archivo == "stdout" -> IO.puts("#{moneda}=#{monto}")
-      true -> File.write!(archivo, "#{moneda}=#{monto}" <> "\n", [:append])
+      archivo == "stdout" -> IO.puts("#{moneda}=#{monto_decimales}")
+      true -> File.write!(archivo, "#{moneda}=#{monto_decimales}\n", [:append])
     end
   end
 
-  defp mostrar_balance(moneda \\ "", montos, monedas, archivo) do
+  defp mostrar_balance(moneda, montos, monedas, archivo) do
     if moneda != "" do
       total =
         Enum.reduce(montos, 0.0, fn {moneda_actual, monto}, acc2 ->
