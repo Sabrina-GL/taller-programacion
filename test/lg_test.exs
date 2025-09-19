@@ -314,7 +314,8 @@ defmodule LedgerTest do
     end
 
     test "procesar_transacciones con archivo inexistente" do
-      assert {:error, 0} == Ledger.Transaction.procesar_transacciones("inexistente.csv", @monedas)
+      assert :error ==
+               elem(Ledger.Transaction.procesar_transacciones("inexistente.csv", @monedas), 0)
     end
 
     test "procesar_transacciones con archivo con error en línea" do
@@ -395,8 +396,8 @@ defmodule LedgerTest do
 
       flags = %{"c1" => "userX", "t" => @archivo_tmp}
       flags2 = %{"c2" => "userY", "t" => @archivo_tmp}
-      assert {:error, 0} == Ledger.Transaction.listar_transacciones(flags, cuentas)
-      assert {:error, 0} == Ledger.Transaction.listar_transacciones(flags2, cuentas)
+      assert :error == elem(Ledger.Transaction.listar_transacciones(flags, cuentas), 0)
+      assert :error == elem(Ledger.Transaction.listar_transacciones(flags2, cuentas), 0)
     end
 
     test "listar_transacciones con flag c1" do
@@ -513,7 +514,7 @@ defmodule LedgerTest do
 
       flags = %{"c1" => "userX"}
 
-      assert {:error, 0} == Ledger.Balance.listar_balance(flags, cuentas, @monedas)
+      assert :error == elem(Ledger.Balance.listar_balance(flags, cuentas, @monedas), 0)
     end
 
     test "listar_balance sin cuenta" do
@@ -524,7 +525,7 @@ defmodule LedgerTest do
 
       flags = %{}
 
-      assert {:error, 0} == Ledger.Balance.listar_balance(flags, cuentas, @monedas)
+      assert :error == elem(Ledger.Balance.listar_balance(flags, cuentas, @monedas), 0)
     end
 
     test "listar_balance con moneda inexistente" do
@@ -534,7 +535,7 @@ defmodule LedgerTest do
       }
 
       flags = %{"c1" => "userA", "m" => "VERDES"}
-      assert {:error, 0} == Ledger.Balance.listar_balance(flags, cuentas, @monedas)
+      assert :error == elem(Ledger.Balance.listar_balance(flags, cuentas, @monedas), 0)
     end
 
     test "listar_balance escribe en archivo una moneda" do
@@ -579,11 +580,11 @@ defmodule LedgerTest do
 
   describe "Tests para Ledger.CLI" do
     test "procesar_argumentos sin comando" do
-      assert {:error, 0} == Ledger.CLI.procesar_argumentos([])
+      assert :error == elem(Ledger.CLI.procesar_argumentos([]), 0)
     end
 
     test "procesar_argumentos con comando inválido" do
-      assert {:error, 0} == Ledger.CLI.procesar_argumentos(["asd"])
+      assert :error == elem(Ledger.CLI.procesar_argumentos(["asd"]), 0)
     end
 
     test "procesar_argumentos con argumentos válidos" do
@@ -595,7 +596,7 @@ defmodule LedgerTest do
     end
 
     test "efectuar_comando con comando inválido" do
-      assert {:error, 0} == Ledger.CLI.efectuar_comando(%{"comando" => "asd"}, %{}, %{})
+      assert :error == elem(Ledger.CLI.efectuar_comando(%{"comando" => "asd"}, %{}, %{}), 0)
     end
 
     test "efectuar_comando con comando válido" do
@@ -609,10 +610,24 @@ defmodule LedgerTest do
 
   describe "Tests para Ledger.main" do
     test "main con argumentos inválidos" do
-      assert {:error, 0} == Ledger.main([])
-      assert {:error, 0} == Ledger.main(["asd"])
-      assert {:error, 0} == Ledger.main(["balance"])
+      assert capture_io(fn ->
+               Ledger.main([])
+             end) == "{:error, No se proporcionó ningún comando}\n"
+
+      assert capture_io(fn ->
+               Ledger.main(["asd"])
+             end) == "{:error, El comando no es válido}\n"
+
+      assert capture_io(fn ->
+               Ledger.main(["balance"])
+             end) == "{:error, La cuenta no existe}\n"
     end
+
+    # test "main con comando balance y moneda inválida" do
+    #   assert capture_io(fn ->
+    #            Ledger.main(["balance", "-c1=userA", "-m=VERDES", "-t=#{@archivo_tmp}"])
+    #          end) == "{:error, La moneda no es válida}\n"
+    # end
 
     test "main con comando balance y argumentos válidos" do
       contenido = """

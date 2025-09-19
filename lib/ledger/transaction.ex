@@ -3,7 +3,7 @@ defmodule Ledger.Transaction do
     lineas = Ledger.FileHandler.leer_archivo(arch_transacciones)
 
     if Enum.empty?(lineas) do
-      {:error, 0}
+      {:error, "El archivo de transacciones está vacío"}
     else
       lineas
       |> Enum.reduce_while(%{}, fn linea, cuentas ->
@@ -28,7 +28,7 @@ defmodule Ledger.Transaction do
 
     cond do
       (c1 != "" and not Map.has_key?(cuentas, c1)) or (c2 != "" and not Map.has_key?(cuentas, c2)) ->
-        {:error, 0}
+        {:error, "Se proporcionó una cuenta inexistente"}
 
       true ->
         Ledger.FileHandler.leer_archivo(t)
@@ -186,27 +186,16 @@ defmodule Ledger.Transaction do
         monto_convertido =
           Ledger.Currency.cambiar_a_moneda(monto, moneda_origen, moneda_destino, monedas)
 
-        # cuentas_actualizadas =
-        #   Map.update(cuentas, cuenta, %{}, fn mapa_cuenta ->
-        #     mapa_cuenta
-        #     |> Map.update(moneda_origen, 0.0, fn monto_actual ->
-        #       monto_actual - monto
-        #     end)
-        #     |> Map.update(moneda_destino, 0.0, fn monto_actual ->
-        #       monto_actual + cambiar_a_moneda(monto, moneda_origen, moneda_destino, monedas)
-        #     end)
-        #   end)
-
-        # restamos de la moneda origen
         cuentas_actualizadas =
           Map.update!(cuentas, cuenta, fn mapa ->
-            mapa_actualizado = Map.update!(mapa, moneda_origen, &(&1 - monto))
+            mapa_actualizado =
+              Map.update!(mapa, moneda_origen, fn monto_actual -> monto_actual - monto end)
 
             Map.update(
               mapa_actualizado,
               moneda_destino,
               monto_convertido,
-              &(&1 + monto_convertido)
+              fn monto_actual -> monto_actual + monto_convertido end
             )
           end)
 

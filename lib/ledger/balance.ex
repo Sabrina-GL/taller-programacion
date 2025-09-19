@@ -6,10 +6,10 @@ defmodule Ledger.Balance do
 
     cond do
       c1 == "" or not Map.has_key?(cuentas, c1) ->
-        {:error, 0}
+        {:error, "La cuenta no existe"}
 
       m != "" and not Map.has_key?(monedas, m) ->
-        {:error, 0}
+        {:error, "La moneda no existe"}
 
       true ->
         balance_cuenta = Map.get(cuentas, c1, %{})

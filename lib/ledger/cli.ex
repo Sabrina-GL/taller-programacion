@@ -2,7 +2,7 @@ defmodule Ledger.CLI do
   def procesar_argumentos(args) do
     cond do
       length(args) < 1 ->
-        {:error, 0}
+        {:error, "No se proporcionó ningún comando"}
 
       true ->
         [comando | args] = args
@@ -23,7 +23,7 @@ defmodule Ledger.CLI do
             {:ok, Map.put(flags, "comando", comando)}
 
           true ->
-            {:error, 0}
+            {:error, "El comando no es válido"}
         end
     end
   end
@@ -37,7 +37,7 @@ defmodule Ledger.CLI do
         Ledger.Balance.listar_balance(flags, cuentas, monedas)
 
       _ ->
-        {:error, 0}
+        {:error, "El comando no es válido"}
     end
   end
 end

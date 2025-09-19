@@ -49,4 +49,8 @@ defmodule Ledger.FileHandler do
       true -> File.write!(archivo, monto_str <> "\n", [:append])
     end
   end
+
+  def mostrar_error(razon) do
+    IO.puts("{:error, " <> razon <> "}")
+  end
 end
