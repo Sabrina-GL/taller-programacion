@@ -11,8 +11,8 @@ defmodule Ledger.FileHandler do
           _linea -> true
         end)
 
-      {:error, _razon} ->
-        []
+      {:error, razon} ->
+        {:error, razon}
     end
   end
 

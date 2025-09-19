@@ -1,22 +1,25 @@
 defmodule Ledger.Transaction do
   def procesar_transacciones(arch_transacciones, monedas) do
-    lineas = Ledger.FileHandler.leer_archivo(arch_transacciones)
+    case Ledger.FileHandler.leer_archivo(arch_transacciones) do
+      {:error, razon} ->
+        {:error, razon}
 
-    if Enum.empty?(lineas) do
-      {:error, "El archivo de transacciones está vacío"}
-    else
-      lineas
-      |> Enum.reduce_while(%{}, fn linea, cuentas ->
-        tipo = Enum.at(linea, 7)
+      [] ->
+        {:error, "El archivo de transacciones está vacío"}
 
-        case valor_transaccion(tipo, cuentas, linea, monedas) do
-          {:ok, cuentas_actualizadas} ->
-            {:cont, cuentas_actualizadas}
+      lineas ->
+        lineas
+        |> Enum.reduce_while(%{}, fn linea, cuentas ->
+          tipo = Enum.at(linea, 7)
 
-          {:error, nro_linea} ->
-            {:halt, {:error, nro_linea}}
-        end
-      end)
+          case valor_transaccion(tipo, cuentas, linea, monedas) do
+            {:ok, cuentas_actualizadas} ->
+              {:cont, cuentas_actualizadas}
+
+            {:error, nro_linea} ->
+              {:halt, {:error, nro_linea}}
+          end
+        end)
     end
   end
 

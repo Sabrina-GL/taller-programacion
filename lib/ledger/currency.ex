@@ -10,10 +10,22 @@ defmodule Ledger.Currency do
     monto * Map.get(monedas, moneda_origen) / Map.get(monedas, moneda_destino)
   end
 
-  def procesar_monedas() do
-    Ledger.FileHandler.leer_archivo("./monedas.csv")
-    |> Enum.reduce(%{}, fn linea, acc ->
-      Map.put(acc, Enum.at(linea, 0), parsear_monto(Enum.at(linea, 1)))
-    end)
+  def procesar_monedas(archivo) do
+    case Ledger.FileHandler.leer_archivo(archivo) do
+      {:error, razon} ->
+        {:error, razon}
+
+      [] ->
+        {:error, "Archivo de monedas vacío"}
+
+      lineas ->
+        monedas =
+          lineas
+          |> Enum.reduce(%{}, fn linea, acc ->
+            Map.put(acc, Enum.at(linea, 0), parsear_monto(Enum.at(linea, 1)))
+          end)
+
+        {:ok, monedas}
+    end
   end
 end

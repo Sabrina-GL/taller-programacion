@@ -23,12 +23,12 @@ defmodule Ledger do
         {:error, razon}
 
       {:ok, flags} ->
-        case Ledger.Currency.procesar_monedas() do
+        case Ledger.Currency.procesar_monedas("./monedas.csv") do
           {:error, razon} ->
             Ledger.FileHandler.mostrar_error(razon)
             {:error, razon}
 
-          monedas ->
+          {:ok, monedas} ->
             arch_transacciones = Map.get(flags, "t", "./transacciones.csv")
 
             case Ledger.Transaction.procesar_transacciones(arch_transacciones, monedas) do

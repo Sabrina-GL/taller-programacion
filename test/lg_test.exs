@@ -82,6 +82,13 @@ defmodule LedgerTest do
   end
 
   describe "Tests para Ledger.Currency" do
+    test "leer archivo monedas vacío" do
+      File.write!(@archivo_tmp, "")
+
+      assert {:error, "Archivo de monedas vacío"} ==
+               Ledger.Currency.procesar_monedas(@archivo_tmp)
+    end
+
     test "parsear_monto convierte string a float" do
       assert Ledger.Currency.parsear_monto("123.45") == 123.45
     end
@@ -97,6 +104,8 @@ defmodule LedgerTest do
     end
 
     test "procesar_monedas lee archivo monedas.csv y devuelve mapa" do
+      File.write!(@archivo_tmp, "BTC;55000.0\nETH;3000.0\nARS;0.0012\nUSDT;1.0\nEUR;1.18")
+
       esperado = %{
         "BTC" => 55000.0,
         "ETH" => 3000.0,
@@ -105,7 +114,7 @@ defmodule LedgerTest do
         "EUR" => 1.18
       }
 
-      assert Ledger.Currency.procesar_monedas() == esperado
+      assert Ledger.Currency.procesar_monedas(@archivo_tmp) == {:ok, esperado}
     end
   end
 
@@ -622,12 +631,6 @@ defmodule LedgerTest do
                Ledger.main(["balance"])
              end) == "{:error, La cuenta no existe}\n"
     end
-
-    # test "main con comando balance y moneda inválida" do
-    #   assert capture_io(fn ->
-    #            Ledger.main(["balance", "-c1=userA", "-m=VERDES", "-t=#{@archivo_tmp}"])
-    #          end) == "{:error, La moneda no es válida}\n"
-    # end
 
     test "main con comando balance y argumentos válidos" do
       contenido = """
