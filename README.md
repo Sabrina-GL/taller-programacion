@@ -54,7 +54,7 @@ Formato: Cada línea representa una transacción única.
 Estructura:
 
 ```
-id_transaccion;timestamp;moneda_origen;moneda_destino; monto; cuenta_origen;cuenta_destino;tipo
+id_transaccion;timestamp;moneda_origen;moneda_destino;monto;cuenta_origen;cuenta_destino;tipo
 ```
 
 * id_transaccion es un identificador unico por transaccion
@@ -175,3 +175,9 @@ mix test
 ### Errores de montos
 
 * Se intenta transferir un monto inválido (negativo o cero)
+
+## Documentación
+
+Para documentación detallada de todos los módulos, funciones y tipos, puedes consultar la documentación completa en HexDocs:
+
+[https://hexdocs.pm/ledger/Ledger.html](https://hexdocs.pm/ledger/Ledger.html)

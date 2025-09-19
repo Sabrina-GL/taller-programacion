@@ -1,4 +1,18 @@
 defmodule Ledger.FileHandler do
+  @moduledoc """
+  Módulo para manejo de archivos y salida de datos en el sistema Ledger.
+  Proporciona funciones para leer archivos, mostrar líneas, balances y errores.
+  """
+
+  @doc """
+  Lee un archivo y devuelve su contenido como una lista de listas, donde cada sublista representa una línea dividida por punto y coma.
+
+  ## Parámetros
+  - `archivo`: Ruta del archivo a leer.
+  ## Retorno
+  - `{:ok, contenido}` si la lectura fue exitosa, donde `contenido` es una lista de listas.
+  - `{:error, razón}` si ocurrió un error al leer el archivo.
+  """
   def leer_archivo(archivo) do
     case File.read(archivo) do
       {:ok, contenido} ->
@@ -16,6 +30,13 @@ defmodule Ledger.FileHandler do
     end
   end
 
+  @doc """
+  Muestra una línea en la salida estándar o la escribe en un archivo.
+
+  ## Parámetros
+  - `linea`: Lista de elementos que conforman la línea.
+  - `archivo`: Ruta del archivo donde se escribirá la línea o "stdout" para salida estándar.
+  """
   def mostrar_linea(linea, archivo) do
     linea_str = Enum.join(linea, ";")
 
@@ -25,6 +46,15 @@ defmodule Ledger.FileHandler do
     end
   end
 
+  @doc """
+  Muestra el balance de montos en diferentes monedas, convirtiéndolos a una moneda específica si se indica.
+
+  ## Parámetros
+  - `moneda`: Moneda a la cual se convertirán todos los montos. Si es una cadena vacía, se muestran los montos en sus monedas originales.
+  - `montos`: Lista de tuplas `{moneda, monto}` representando los montos en diferentes monedas.
+  - `monedas`: Mapa de tasas de cambio entre monedas.
+  - `archivo`: Ruta del archivo donde se escribirá el balance o "stdout" para salida estándar.
+  """
   def mostrar_balance(moneda, montos, monedas, archivo) do
     if moneda != "" do
       total =

@@ -619,6 +619,9 @@ defmodule LedgerTest do
 
   describe "Tests para Ledger.main" do
     test "main con argumentos inválidos" do
+      contenido = "1;1756751403;USDT;;100.0;userA;;alta_cuenta"
+      File.write!(@archivo_tmp, contenido)
+
       assert capture_io(fn ->
                Ledger.main([])
              end) == "{:error, No se proporcionó ningún comando}\n"
@@ -628,7 +631,7 @@ defmodule LedgerTest do
              end) == "{:error, El comando no es válido}\n"
 
       assert capture_io(fn ->
-               Ledger.main(["balance"])
+               Ledger.main(["balance", "-t=#{@archivo_tmp}"])
              end) == "{:error, La cuenta no existe}\n"
     end
 

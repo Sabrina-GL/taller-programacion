@@ -1,21 +1,19 @@
 defmodule Ledger do
   @moduledoc """
-  Documentation for `LG`.
+  Módulo principal del sistema Ledger.
+
+  Sistema de libro contable para gestionar transacciones entre usuarios con soporte para múltiples monedas y conversiones.
   """
 
   @doc """
-  Hello world.
+  Función principal de entrada para la línea de comandos.
 
-  ## Examples
-
-      iex> Ledger.hello()
-      :world
-
+  ## Parámetros
+  - `args`: Lista de argumentos de línea de comandos
+  ## Retorno
+  - `{:ok, 0}` si la ejecución fue exitosa
+  - `{:error, razón}` si ocurrió algún error
   """
-  def hello do
-    :world
-  end
-
   def main(args \\ System.argv()) do
     case Ledger.CLI.procesar_argumentos(args) do
       {:error, razon} ->
