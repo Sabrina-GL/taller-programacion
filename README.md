@@ -178,6 +178,6 @@ mix test
 
 ## Documentación
 
-Para documentación detallada de todos los módulos, funciones y tipos, puedes consultar la documentación completa en HexDocs:
+Para documentación detallada de todos los módulos, funciones y tipos, se puede consultar la documentación completa en HexDocs:
 
 [https://hexdocs.pm/ledger/Ledger.html](https://hexdocs.pm/ledger/Ledger.html)
