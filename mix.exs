@@ -1,9 +1,9 @@
-defmodule LG.MixProject do
+defmodule Ledger.MixProject do
   use Mix.Project
 
   def project do
     [
-      app: :lg,
+      app: :ledger,
       version: "0.1.0",
       elixir: "~> 1.17",
       start_permanent: Mix.env() == :prod,
