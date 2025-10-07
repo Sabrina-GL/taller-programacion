@@ -1,3 +1,31 @@
+# Cuando abrís todo de nuevo
+
+## Levantar la base de datos con Docker
+
+docker compose up -d
+
+
+Esto arranca el contenedor de Postgres.
+
+## (Solo la primera vez o cuando agregues migraciones nuevas) correr las migraciones:
+
+mix ecto.migrate
+
+
+## Compilar el proyecto
+
+mix compile
+
+
+## Generar el ejecutable CLI
+
+mix escript.build
+
+
+## Usar los comandos que pide el TP:
+
+./ledger crear_usuario -n=pepe -b=1990-01-01
+./ledger ver_usuario -id=1
 # TP1 - Ledger
 
 **Ledger es un sistema de libro contables que registra transacciones de

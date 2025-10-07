@@ -15,6 +15,10 @@ defmodule Ledger do
   - `{:error, razón}` si ocurrió algún error
   """
   def main(args \\ System.argv()) do
+    # {:ok, _} = Application.ensure_all_started(:ecto)
+    # {:ok, _} = Application.ensure_all_started(:postgrex)
+    {:ok, _} = Ledger.Repo.start_link()
+
     case Ledger.CLI.procesar_argumentos(args) do
       {:error, razon} ->
         Ledger.FileHandler.mostrar_error(razon)

@@ -692,4 +692,15 @@ defmodule LedgerTest do
       assert esperado == Ledger.Transaction.procesar_transacciones(@archivo_tmp, @monedas)
     end
   end
+
+  # describe "Tests para Ledger.Usuario" do
+  #   test "crear_usuario válido" do
+  #     setup do
+  #       :ok = Ecto.Adapters.SQL.Sandbox.checkout(Ledger.Repo)
+  #     end
+
+  #     usuario = Ledger.Usuario.crear_usuario("crear_usuario", "userA", "1900-05-06")
+  #     assert {usuario.nombre, usuario.fecha_nacimiento} == {"userA", ~D[1900-05-06]}
+  #   end
+  # end
 end

@@ -22,7 +22,14 @@ defmodule Ledger.CLI do
         [comando | args] = args
 
         cond do
-          comando in ["transacciones", "balance"] ->
+          comando in [
+            "transacciones",
+            "balance",
+            "crear_usuario",
+            "ver_usuario",
+            "borrar_usuario",
+            "editar_usuario"
+          ] ->
             flags =
               Enum.reduce(args, %{}, fn arg, acc ->
                 case String.split(arg, "=") do
@@ -37,7 +44,7 @@ defmodule Ledger.CLI do
             {:ok, Map.put(flags, "comando", comando)}
 
           true ->
-            {:error, "El comando no es válido"}
+            {:error, "#{comando}: El comando no es válido"}
         end
     end
   end
@@ -54,12 +61,34 @@ defmodule Ledger.CLI do
   - `{:error, razón}` si ocurrió algún error al ejecutar el comando.
   """
   def efectuar_comando(flags, cuentas, monedas) do
-    case flags["comando"] do
+    comando = flags["comando"]
+
+    case comando do
       "transacciones" ->
         Ledger.Transaction.listar_transacciones(flags, cuentas)
 
       "balance" ->
         Ledger.Balance.listar_balance(flags, cuentas, monedas)
+
+      "crear_usuario" ->
+        Ledger.Usuario.crear_usuario(
+          comando,
+          Map.get(flags, "n", ""),
+          Map.get(flags, "b", "")
+        )
+
+      "ver_usuario" ->
+        Ledger.Usuario.ver_usuario(comando, Map.get(flags, "id", ""))
+
+      "borrar_usuario" ->
+        Ledger.Usuario.borrar_usuario(comando, Map.get(flags, "id", ""))
+
+      "editar_usuario" ->
+        Ledger.Usuario.editar_usuario(
+          comando,
+          Map.get(flags, "id", ""),
+          Map.get(flags, "n", "")
+        )
 
       _ ->
         {:error, "El comando no es válido"}
