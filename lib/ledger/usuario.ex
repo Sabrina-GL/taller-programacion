@@ -6,22 +6,22 @@ defmodule Ledger.Usuario do
   schema "usuarios" do
     field(:nombre, :string)
     field(:fecha_nacimiento, :date)
-    field(:fecha_creacion, :date)
-    field(:fecha_edicion, :date)
+    timestamps()
+    has_many(:cuentas, Ledger.Cuenta)
   end
 
   def crear_changeset(usuario, attrs) do
     usuario
-    |> cast(attrs, [:nombre, :fecha_nacimiento, :fecha_creacion, :fecha_edicion])
-    |> validate_required([:nombre, :fecha_nacimiento, :fecha_creacion, :fecha_edicion])
+    |> cast(attrs, [:nombre, :fecha_nacimiento])
+    |> validate_required([:nombre, :fecha_nacimiento])
     |> unique_constraint(:nombre)
     |> validar_mayoria_edad(:fecha_nacimiento)
   end
 
   def editar_changeset(usuario, attrs) do
     usuario
-    |> cast(attrs, [:nombre, :fecha_nacimiento, :fecha_edicion])
-    |> validate_required([:nombre, :fecha_edicion])
+    |> cast(attrs, [:nombre])
+    |> validate_required([:nombre])
     |> unique_constraint(:nombre)
     |> validar_nombre_distinto(usuario)
   end
@@ -59,9 +59,7 @@ defmodule Ledger.Usuario do
           %__MODULE__{}
           |> crear_changeset(%{
             nombre: nombre,
-            fecha_nacimiento: fecha,
-            fecha_creacion: Date.utc_today(),
-            fecha_edicion: Date.utc_today()
+            fecha_nacimiento: fecha
           })
 
         case Repo.insert(changeset) do
@@ -86,8 +84,7 @@ defmodule Ledger.Usuario do
         changeset =
           usuario
           |> editar_changeset(%{
-            nombre: nuevo_nombre,
-            fecha_edicion: Date.utc_today()
+            nombre: nuevo_nombre
           })
 
         case Repo.update(changeset) do
@@ -119,6 +116,7 @@ defmodule Ledger.Usuario do
         {:error, "#{comando}: Usuario no encontrado"}
 
       usuario ->
+        IO.inspect(usuario)
         {:ok, usuario}
     end
   end

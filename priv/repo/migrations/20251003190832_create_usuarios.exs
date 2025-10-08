@@ -5,8 +5,7 @@ defmodule Ledger.Repo.Migrations.CreateUsuarios do
     create table(:usuarios) do
       add :nombre, :string, null: false
       add :fecha_nacimiento, :date, null: false
-      add :fecha_creacion, :date, null: false
-      add :fecha_edicion, :date, null: false
+      timestamps()
     end
 
     create unique_index(:usuarios, [:nombre])
