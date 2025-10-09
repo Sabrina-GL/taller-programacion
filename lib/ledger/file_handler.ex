@@ -4,6 +4,8 @@ defmodule Ledger.FileHandler do
   Proporciona funciones para leer archivos, mostrar líneas, balances y errores.
   """
 
+  alias Ledger.Moneda
+
   @doc """
   Lee un archivo y devuelve su contenido como una lista de listas, donde cada sublista representa una línea dividida por punto y coma.
 
@@ -46,6 +48,12 @@ defmodule Ledger.FileHandler do
     end
   end
 
+  def mostrar_balance(balance, archivo) do
+    Enum.each(balance, fn {moneda, monto} ->
+      mostrar_linea_balance(moneda, monto, archivo)
+    end)
+  end
+
   @doc """
   Muestra el balance de montos en diferentes monedas, convirtiéndolos a una moneda específica si se indica.
 
@@ -71,8 +79,9 @@ defmodule Ledger.FileHandler do
   end
 
   defp mostrar_linea_balance(moneda, monto, archivo) do
+    nombre_moneda = Moneda.obtener_nombre(moneda)
     monto_decimales = :io_lib.format("~.6f", [monto]) |> to_string()
-    monto_str = "#{moneda}=#{monto_decimales}"
+    monto_str = "#{nombre_moneda}=#{monto_decimales}"
 
     cond do
       archivo == "stdout" -> IO.puts(monto_str)

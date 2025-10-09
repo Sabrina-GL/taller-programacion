@@ -134,4 +134,11 @@ defmodule Ledger.Moneda do
 
     monto * precio_origen / precio_destino
   end
+
+  def obtener_nombre(id) do
+    case Repo.get(Ledger.Moneda, id) do
+      nil -> nil
+      moneda -> moneda.nombre
+    end
+  end
 end
