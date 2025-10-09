@@ -7,7 +7,6 @@ defmodule Ledger.Usuario do
     field(:nombre, :string)
     field(:fecha_nacimiento, :date)
     timestamps()
-    has_many(:cuentas, Ledger.Cuenta)
   end
 
   def crear_changeset(usuario, attrs) do

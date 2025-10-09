@@ -15,8 +15,7 @@ defmodule Ledger.CLI do
     "editar_moneda",
     "borrar_moneda",
     "ver_moneda",
-    "alta_cuenta",
-    "asd"
+    "alta_cuenta"
   ]
 
   @doc """
@@ -73,12 +72,12 @@ defmodule Ledger.CLI do
     efectuar_comando(comando, flags, cuentas, monedas)
   end
 
-  defp efectuar_comando("transacciones", flags, cuentas, _monedas) do
-    Ledger.Transaction.listar_transacciones(flags, cuentas)
+  defp efectuar_comando(comando = "transacciones", flags, _cuentas, _monedas) do
+    Ledger.Transaccion.listar_transacciones(comando, flags)
   end
 
-  defp efectuar_comando("balance", flags, cuentas, monedas) do
-    Ledger.Balance.listar_balance(flags, cuentas, monedas)
+  defp efectuar_comando(comando = "balance", flags, _cuentas, _monedas) do
+    Ledger.Transaccion.listar_balance(comando, flags)
   end
 
   defp efectuar_comando("crear_usuario", flags, _cuentas, _monedas) do

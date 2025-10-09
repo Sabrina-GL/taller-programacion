@@ -7,7 +7,6 @@ defmodule Ledger.Moneda do
     field(:nombre, :string)
     field(:precio_usd, :float)
     timestamps()
-    has_many(:cuentas, Ledger.Cuenta)
   end
 
   def changeset_crear(moneda, attrs) do
@@ -33,6 +32,16 @@ defmodule Ledger.Moneda do
       greater_than: 0,
       message: "El precio debe ser un número positivo"
     )
+  end
+
+  def existe_moneda?(moneda_id) do
+    case Repo.get(Moneda, String.to_integer(moneda_id)) do
+      nil ->
+        false
+
+      _moneda ->
+        true
+    end
   end
 
   def crear_moneda(comando, nombre, precio_usd) do
@@ -117,5 +126,12 @@ defmodule Ledger.Moneda do
 
   def obtener_moneda(id) do
     Repo.get(Ledger.Moneda, id)
+  end
+
+  def cambiar_a_moneda(monto, moneda_origen_id, moneda_destino_id) do
+    precio_origen = obtener_moneda(moneda_origen_id)
+    precio_destino = obtener_moneda(moneda_destino_id)
+
+    monto * precio_origen / precio_destino
   end
 end
