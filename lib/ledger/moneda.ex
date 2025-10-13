@@ -44,7 +44,7 @@ defmodule Ledger.Moneda do
     end
   end
 
-  def crear_moneda(comando, nombre, precio_usd) do
+  def crear_moneda(nombre, precio_usd) do
     case Float.parse(precio_usd) do
       {precio, ""} when precio > 0 ->
         changeset =
@@ -59,18 +59,18 @@ defmodule Ledger.Moneda do
             {:ok, moneda}
 
           {:error, razon} ->
-            {:error, "#{comando}: #{inspect(razon)}"}
+            {:error, razon}
         end
 
       _ ->
-        {:error, "#{comando}: El precio en dólares debe ser un número positivo"}
+        {:error, "El precio en dólares debe ser un número positivo"}
     end
   end
 
-  def editar_moneda(comando, id, nuevo_precio_usd) do
+  def editar_moneda(id, nuevo_precio_usd) do
     case Repo.get(Ledger.Moneda, id) do
       nil ->
-        {:error, "#{comando}: Moneda no encontrada"}
+        {:error, "Moneda no encontrada"}
 
       moneda ->
         case Float.parse(nuevo_precio_usd) do
@@ -86,33 +86,33 @@ defmodule Ledger.Moneda do
                 {:ok, moneda}
 
               {:error, razon} ->
-                {:error, "#{comando}: #{inspect(razon)}"}
+                {:error, razon}
             end
 
           _ ->
-            {:error, "#{comando}: El nuevo precio en dólares debe ser un número positivo"}
+            {:error, "El nuevo precio en dólares debe ser un número positivo"}
         end
     end
   end
 
   # TODO: chequear que no este en ninguna transacccion
-  def borrar_moneda(comando, id) do
+  def borrar_moneda(id) do
     case Repo.get(Ledger.Moneda, id) do
       nil ->
-        {:error, "#{comando}: Moneda no encontrada"}
+        {:error, "Moneda no encontrada"}
 
       moneda ->
         case Repo.delete(moneda) do
           {:ok, _struct} -> {:ok, "Moneda borrada exitosamente"}
-          {:error, razon} -> {:error, "#{comando}: #{inspect(razon)}"}
+          {:error, razon} -> {:error, razon}
         end
     end
   end
 
-  def ver_moneda(comando, id) do
+  def ver_moneda(id) do
     case Repo.get(Ledger.Moneda, id) do
       nil ->
-        {:error, "#{comando}: Moneda no encontrada"}
+        {:error, "Moneda no encontrada"}
 
       moneda ->
         IO.inspect(moneda)

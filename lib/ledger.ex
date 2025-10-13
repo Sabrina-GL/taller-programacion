@@ -17,8 +17,19 @@ defmodule Ledger do
   def main(args \\ System.argv()) do
     # {:ok, _} = Application.ensure_all_started(:ecto)
     # {:ok, _} = Application.ensure_all_started(:postgrex)
-    {:ok, _} = Ledger.Repo.start_link()
+    case Application.ensure_all_started(:ledger) do
+      {:ok, _} ->
+        procesar_comandos(args)
 
+      {:error, {:already_started, _}} ->
+        procesar_comandos(args)
+
+      error ->
+        error
+    end
+  end
+
+  def procesar_comandos(args) do
     case Ledger.CLI.procesar_argumentos(args) do
       {:error, razon} ->
         Ledger.FileHandler.mostrar_error(razon)

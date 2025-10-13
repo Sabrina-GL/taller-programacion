@@ -92,4 +92,24 @@ defmodule Ledger.FileHandler do
   def mostrar_error(razon) do
     IO.puts("{:error, " <> razon <> "}")
   end
+
+  def extraer_error(changeset) do
+    mensaje_error =
+      case changeset.errors do
+        [error | _] ->
+          {_campo, {mensaje, _}} = error
+          "#{mensaje}"
+
+        [] ->
+          case changeset.constraints do
+            [%{type: :unique, constraint: "usuarios_nombre_index"} | _] ->
+              "El nombre ya está en uso"
+
+            _ ->
+              "Error desconocido"
+          end
+      end
+
+    mensaje_error
+  end
 end

@@ -29,9 +29,9 @@ defmodule Ledger.MixProject do
   # Run "mix help compile.app" to learn about applications.
   def application do
     [
-      # mod: {Ledger.Application, []},
-      # , :ecto_sql]
-      extra_applications: [:logger]
+      # extra_applications: [:logger]
+      mod: {Ledger.Application, []},
+      extra_applications: [:logger, :ecto_sql]
     ]
   end
 

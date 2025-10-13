@@ -74,7 +74,7 @@ defmodule Ledger.Transaccion do
   end
 
   # TODO: chequear si ya existe cuenta
-  def alta_cuenta(comando, usuario_id, moneda_id, monto) do
+  def alta_cuenta(usuario_id, moneda_id, monto) do
     changeset =
       %__MODULE__{}
       |> changeset_crear(%{
@@ -89,7 +89,7 @@ defmodule Ledger.Transaccion do
         {:ok, transaccion}
 
       {:error, razon} ->
-        {:error, "#{comando}: No se pudo crear la transacción: #{inspect(razon)}"}
+        {:error, "No se pudo crear la transacción: #{inspect(razon)}"}
     end
   end
 
@@ -115,7 +115,7 @@ defmodule Ledger.Transaccion do
   # end
 
   # TODO: verificar que tiene dinero para hacer la transferencia
-  def realizar_transferencia(comando, cuenta_origen_id, cuenta_destino_id, moneda_id, monto) do
+  def realizar_transferencia(cuenta_origen_id, cuenta_destino_id, moneda_id, monto) do
     changeset =
       %__MODULE__{}
       |> changeset_crear(%{
@@ -132,12 +132,11 @@ defmodule Ledger.Transaccion do
         {:ok, transaccion}
 
       {:error, razon} ->
-        {:error, "#{comando}: #{inspect(razon)}"}
+        {:error, razon}
     end
   end
 
   def realizar_swap(
-        comando,
         cuenta_id,
         moneda_origen_id,
         moneda_destino_id,
@@ -158,7 +157,7 @@ defmodule Ledger.Transaccion do
         {:ok, transaccion}
 
       {:error, razon} ->
-        {:error, "#{comando}: #{inspect(razon)}"}
+        {:error, razon}
     end
   end
 
@@ -223,13 +222,13 @@ defmodule Ledger.Transaccion do
   - `{:ok, 0}` si la operación fue exitosa.
   - `{:error, razón}` si ocurrió algún error.
   """
-  def listar_transacciones(comando, flags) do
+  def listar_transacciones(flags) do
     c1 = Map.get(flags, "c1", "")
     c2 = Map.get(flags, "c2", "")
     # o = Map.get(flags, "o", "stdout")
     case obtener_transacciones(c1, c2) do
       {:error, razon} ->
-        {:error, "#{comando}: #{razon}"}
+        {:error, razon}
 
       {:ok, transacciones} ->
         Enum.each(transacciones, fn t ->
@@ -246,20 +245,22 @@ defmodule Ledger.Transaccion do
           ----------------------------
           """)
         end)
+
+        {:ok, 0}
     end
   end
 
-  def listar_balance(comando, cuenta_id, moneda_id, archivo) do
+  def listar_balance(cuenta_id, moneda_id, archivo) do
     balance = %{}
 
     case obtener_transacciones(cuenta_id, "") do
       {:error, razon} ->
-        {:error, "#{comando}: #{razon}"}
+        {:error, razon}
 
       {:ok, transacciones_salientes} ->
         case obtener_transacciones("", cuenta_id) do
           {:error, razon} ->
-            {:error, "#{comando}: #{razon}"}
+            {:error, razon}
 
           {:ok, transacciones_entrantes} ->
             balance_actualizado =
@@ -270,7 +271,7 @@ defmodule Ledger.Transaccion do
             if moneda_id != "" do
               case Moneda.obtener_moneda(moneda_id) do
                 nil ->
-                  {:error, "#{comando}: Moneda inexistente"}
+                  {:error, "Moneda inexistente"}
 
                 moneda ->
                   balance_en_moneda = cambiar_balance_a_moneda(balance_actualizado, moneda.id)

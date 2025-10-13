@@ -71,84 +71,94 @@ defmodule Ledger.CLI do
   """
   def efectuar_comando(flags, _cuentas, _monedas) do
     comando = flags["comando"]
-    efectuar_comando(comando, flags)
+
+    case efectuar_comando(comando, flags) do
+      {:error, razon} -> {:error, "#{comando}: #{razon}"}
+      {:ok, resultado} -> {:ok, resultado}
+    end
   end
 
-  defp efectuar_comando(comando = "transacciones", flags) do
-    Ledger.Transaccion.listar_transacciones(comando, flags)
+  defp efectuar_comando("transacciones", flags) do
+    Ledger.Transaccion.listar_transacciones(flags)
   end
 
-  defp efectuar_comando(comando = "balance", flags) do
+  defp efectuar_comando("balance", flags) do
     c1 = parsear_flag(flags, "c1")
     m = parsear_flag(flags, "m")
     o = Map.get(flags, "o", "stdout")
-    Ledger.Transaccion.listar_balance(comando, c1, m, o)
+    Ledger.Transaccion.listar_balance(c1, m, o)
   end
 
   defp efectuar_comando("crear_usuario", flags) do
     Ledger.Usuario.crear_usuario(
-      "crear_usuario",
       Map.get(flags, "n", ""),
       Map.get(flags, "b", "")
     )
   end
 
-  defp efectuar_comando(comando = "editar_usuario", flags) do
+  defp efectuar_comando("editar_usuario", flags) do
     Ledger.Usuario.editar_usuario(
-      comando,
       Map.get(flags, "id", ""),
       Map.get(flags, "n", "")
     )
+
+    # case parsear_flag(flags, "id", "") do
+    #   {:error, razon} ->
+    #     {:error, razon}
+
+    #   {:ok, id} ->
+    #     Ledger.Usuario.editar_usuario(
+    #       id,
+    #       Map.get(flags, "n", "")
+    #     )
+    # end
   end
 
-  defp efectuar_comando(comando = "borrar_usuario", flags) do
-    Ledger.Usuario.borrar_usuario(comando, Map.get(flags, "id", ""))
+  defp efectuar_comando("borrar_usuario", flags) do
+    Ledger.Usuario.borrar_usuario(Map.get(flags, "id", ""))
   end
 
-  defp efectuar_comando(comando = "ver_usuario", flags) do
-    Ledger.Usuario.ver_usuario(comando, Map.get(flags, "id", ""))
+  defp efectuar_comando("ver_usuario", flags) do
+    Ledger.Usuario.ver_usuario(Map.get(flags, "id", ""))
   end
 
-  defp efectuar_comando(comando = "crear_moneda", flags) do
+  defp efectuar_comando("crear_moneda", flags) do
     Ledger.Moneda.crear_moneda(
-      comando,
       Map.get(flags, "n", ""),
       Map.get(flags, "p", "")
     )
   end
 
-  defp efectuar_comando(comando = "editar_moneda", flags) do
+  defp efectuar_comando("editar_moneda", flags) do
     Ledger.Moneda.editar_moneda(
-      comando,
       Map.get(flags, "id", ""),
       Map.get(flags, "p", "")
     )
   end
 
-  defp efectuar_comando(comando = "borrar_moneda", flags) do
-    Ledger.Moneda.borrar_moneda(comando, Map.get(flags, "id", ""))
+  defp efectuar_comando("borrar_moneda", flags) do
+    Ledger.Moneda.borrar_moneda(Map.get(flags, "id", ""))
   end
 
-  defp efectuar_comando(comando = "ver_moneda", flags) do
-    Ledger.Moneda.ver_moneda(comando, Map.get(flags, "id", ""))
+  defp efectuar_comando("ver_moneda", flags) do
+    Ledger.Moneda.ver_moneda(Map.get(flags, "id", ""))
   end
 
-  defp efectuar_comando(comando = "alta_cuenta", flags) do
+  defp efectuar_comando("alta_cuenta", flags) do
     usuario_id = Map.get(flags, "u", "")
     moneda_id = Map.get(flags, "m", "")
     monto = Map.get(flags, "a", "")
 
-    Ledger.Transaccion.alta_cuenta(comando, usuario_id, moneda_id, monto)
+    Ledger.Transaccion.alta_cuenta(usuario_id, moneda_id, monto)
   end
 
-  defp efectuar_comando(comando = "realizar_transferencia", flags) do
+  defp efectuar_comando("realizar_transferencia", flags) do
     cuenta_origen = parsear_flag(flags, "o")
     cuenta_destino = parsear_flag(flags, "d")
     moneda = parsear_flag(flags, "m")
     monto = parsear_flag(flags, "a")
 
     Ledger.Transaccion.realizar_transferencia(
-      comando,
       cuenta_origen,
       cuenta_destino,
       moneda,
@@ -156,20 +166,45 @@ defmodule Ledger.CLI do
     )
   end
 
-  defp efectuar_comando(comando = "realizar_swap", flags) do
+  defp efectuar_comando("realizar_swap", flags) do
     cuenta = parsear_flag(flags, "u")
     moneda_origen = parsear_flag(flags, "mo")
     moneda_destino = parsear_flag(flags, "md")
     monto = parsear_flag(flags, "a")
 
-    Ledger.Transaccion.realizar_swap(comando, cuenta, moneda_origen, moneda_destino, monto)
+    Ledger.Transaccion.realizar_swap(cuenta, moneda_origen, moneda_destino, monto)
   end
 
   defp parsear_flag(flags, key, default \\ "") do
     case Map.get(flags, key, default) do
-      "" -> default
-      value when is_binary(value) -> String.to_integer(value)
-      value -> value
+      "" ->
+        {:ok, default}
+
+      value when is_binary(value) ->
+        case Integer.parse(value) do
+          {num, ""} ->
+            {:ok, num}
+
+          {_num, rest} ->
+            # "123abc" → error
+            {:error, "#{key} contiene caracteres no numéricos: '#{rest}'"}
+
+          :error ->
+            {:error, "#{key} debe ser un número válido"}
+        end
+
+      value ->
+        {:ok, value}
+    end
+  end
+
+  def parsear_id(id) do
+    case Integer.parse(id) do
+      {id_int, ""} ->
+        {:ok, id_int}
+
+      _ ->
+        {:error, "ID inválido, debe ser un número"}
     end
   end
 

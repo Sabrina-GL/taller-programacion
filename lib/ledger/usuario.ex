@@ -1,7 +1,7 @@
 defmodule Ledger.Usuario do
   use Ecto.Schema
   import Ecto.Changeset
-  alias Ledger.Repo
+  alias Ledger.{Repo, FileHandler}
 
   schema "usuarios" do
     field(:nombre, :string)
@@ -9,19 +9,20 @@ defmodule Ledger.Usuario do
     timestamps()
   end
 
-  def crear_changeset(usuario, attrs) do
+  defp crear_changeset(usuario, attrs) do
     usuario
     |> cast(attrs, [:nombre, :fecha_nacimiento])
-    |> validate_required([:nombre, :fecha_nacimiento])
-    |> unique_constraint(:nombre)
+    |> validate_required(:nombre, message: "El nombre es obligatorio")
+    |> validate_required(:fecha_nacimiento)
+    |> unique_constraint(:nombre, message: "El nombre ya está en uso")
     |> validar_mayoria_edad(:fecha_nacimiento)
   end
 
-  def editar_changeset(usuario, attrs) do
+  defp editar_changeset(usuario, attrs) do
     usuario
     |> cast(attrs, [:nombre])
-    |> validate_required([:nombre])
-    |> unique_constraint(:nombre)
+    |> validate_required(:nombre, message: "El nombre es obligatorio")
+    |> unique_constraint(:nombre, message: "El nombre ya está en uso")
     |> validar_nombre_distinto(usuario)
   end
 
@@ -51,7 +52,7 @@ defmodule Ledger.Usuario do
     end
   end
 
-  def crear_usuario(comando, nombre, fecha_nacimiento) do
+  def crear_usuario(nombre, fecha_nacimiento) do
     case Date.from_iso8601(fecha_nacimiento) do
       {:ok, fecha} ->
         changeset =
@@ -65,62 +66,87 @@ defmodule Ledger.Usuario do
           {:ok, usuario} ->
             {:ok, usuario}
 
-          {:error, razon} ->
-            {:error, "#{comando}: No se pudo crear el usuario: #{inspect(razon)}"}
+          {:error, _razon} ->
+            {:error, FileHandler.extraer_error(changeset)}
         end
 
       {:error, _} ->
-        {:error, "#{comando}: Fecha de nacimiento inválida. Formato esperado: AAAA-MM-DD"}
+        {:error, "Fecha de nacimiento inválida. Formato esperado: AAAA-MM-DD"}
     end
   end
 
-  def editar_usuario(comando, id, nuevo_nombre) do
+  def editar_usuario(id, nuevo_nombre) do
     case obtener_usuario(id) do
-      nil ->
-        {:error, "#{comando}: Usuario no encontrado"}
+      {:error, razon} ->
+        {:error, razon}
 
-      usuario ->
-        changeset =
-          usuario
-          |> editar_changeset(%{
-            nombre: nuevo_nombre
-          })
+      {:ok, usuario} ->
+        if nuevo_nombre == "" do
+          {:error, "El nombre es obligatorio"}
+        else
+          changeset =
+            usuario
+            |> editar_changeset(%{
+              nombre: nuevo_nombre
+            })
 
-        case Repo.update(changeset) do
-          {:ok, usuario} ->
-            {:ok, usuario}
+          case Repo.update(changeset) do
+            {:ok, usuario} ->
+              {:ok, usuario}
 
-          {:error, razon} ->
-            {:error, "#{comando}: #{inspect(razon)}"}
+            {:error, _razon} ->
+              {:error, FileHandler.extraer_error(changeset)}
+          end
         end
     end
   end
 
-  def borrar_usuario(comando, id) do
+  def borrar_usuario(id) do
     case obtener_usuario(id) do
-      nil ->
-        {:error, "#{comando}: Usuario no encontrado"}
+      {:error, razon} ->
+        {:error, razon}
 
-      usuario ->
+      {:ok, usuario} ->
         case Repo.delete(usuario) do
           {:ok, _struct} -> {:ok, "Usuario borrado exitosamente"}
-          {:error, razon} -> {:error, "#{comando}: #{inspect(razon)}"}
+          {:error, razon} -> {:error, razon}
         end
     end
   end
 
-  def ver_usuario(comando, id) do
+  def ver_usuario(id) do
     case obtener_usuario(id) do
-      nil ->
-        {:error, "#{comando}: Usuario no encontrado"}
+      {:error, razon} ->
+        {:error, razon}
 
-      usuario ->
+      {:ok, usuario} ->
         IO.inspect(usuario)
         {:ok, usuario}
     end
   end
 
   def obtener_usuario(id) do
-    Repo.get(Ledger.Usuario, id)
+    id_int =
+      case id do
+        id when is_integer(id) ->
+          id
+
+        id when is_binary(id) ->
+          case Integer.parse(id) do
+            {id_int, ""} -> id_int
+            _ -> nil
+          end
+      end
+
+    case id_int do
+      nil ->
+        {:error, "ID inválido: debe ser un número"}
+
+      id ->
+        case Repo.get(Ledger.Usuario, id) do
+          nil -> {:error, "Usuario no encontrado"}
+          usuario -> {:ok, usuario}
+        end
+    end
   end
 end
