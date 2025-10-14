@@ -1,7 +1,7 @@
 defmodule Ledger.Usuario do
   use Ecto.Schema
   import Ecto.Changeset
-  alias Ledger.{Repo, FileHandler}
+  alias Ledger.{Repo, FileHandler, CLI}
 
   schema "usuarios" do
     field(:nombre, :string)
@@ -114,39 +114,20 @@ defmodule Ledger.Usuario do
     end
   end
 
-  def ver_usuario(id) do
+  def ver_usuario(id, archivo) do
     case obtener_usuario(id) do
       {:error, razon} ->
         {:error, razon}
 
       {:ok, usuario} ->
-        IO.inspect(usuario)
-        {:ok, usuario}
+        {:ok, FileHandler.mostrar_usuario(usuario, archivo)}
     end
   end
 
   def obtener_usuario(id) do
-    id_int =
-      case id do
-        id when is_integer(id) ->
-          id
-
-        id when is_binary(id) ->
-          case Integer.parse(id) do
-            {id_int, ""} -> id_int
-            _ -> nil
-          end
-      end
-
-    case id_int do
-      nil ->
-        {:error, "ID inválido: debe ser un número"}
-
-      id ->
-        case Repo.get(Ledger.Usuario, id) do
-          nil -> {:error, "Usuario no encontrado"}
-          usuario -> {:ok, usuario}
-        end
+    case Repo.get(Ledger.Usuario, id) do
+      nil -> {:error, "Usuario no encontrado"}
+      usuario -> {:ok, usuario}
     end
   end
 end

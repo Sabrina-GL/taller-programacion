@@ -2,7 +2,7 @@ defmodule Ledger.Transaccion do
   use Ecto.Schema
   import Ecto.Changeset
   import Ecto.Query
-  alias Ledger.{Repo, Usuario, Moneda, FileHandler}
+  alias Ledger.{Repo, Usuario, Moneda, FileHandler, CLI}
 
   schema "transacciones" do
     field(:tipo, :string)
@@ -22,12 +22,13 @@ defmodule Ledger.Transaccion do
       :moneda_origen_id,
       :monto
     ])
-    |> validate_required([
+    |> validate_required(
       :tipo,
-      :cuenta_origen_id,
-      :moneda_origen_id,
-      :monto
-    ])
+      message: "El tipo es obligatorio"
+    )
+    |> validate_required(:cuenta_origen_id, message: "La cuenta de origen es obligatoria")
+    |> validate_required(:moneda_origen_id, message: "La moneda es obligatoria")
+    |> validate_required(:monto, message: "El monto es obligatorio")
     |> validar_segun_tipo(attrs)
   end
 
@@ -74,22 +75,25 @@ defmodule Ledger.Transaccion do
   end
 
   # TODO: chequear si ya existe cuenta
-  def alta_cuenta(usuario_id, moneda_id, monto) do
-    changeset =
-      %__MODULE__{}
-      |> changeset_crear(%{
-        tipo: "alta",
-        cuenta_origen_id: usuario_id,
-        moneda_origen_id: moneda_id,
-        monto: monto
-      })
+  def alta_cuenta(usuario, moneda, monto) do
+    with {:ok, _usuario} <- Usuario.obtener_usuario(usuario),
+         {:ok, _moneda} <- Moneda.obtener_moneda(moneda) do
+      changeset =
+        %__MODULE__{}
+        |> changeset_crear(%{
+          tipo: "alta",
+          cuenta_origen_id: usuario,
+          moneda_origen_id: moneda,
+          monto: monto
+        })
 
-    case Repo.insert(changeset) do
-      {:ok, transaccion} ->
-        {:ok, transaccion}
+      case Repo.insert(changeset) do
+        {:ok, transaccion} ->
+          {:ok, transaccion}
 
-      {:error, razon} ->
-        {:error, "No se pudo crear la transacción: #{inspect(razon)}"}
+        {:error, _razon} ->
+          {:error, FileHandler.extraer_error(changeset)}
+      end
     end
   end
 
@@ -270,10 +274,10 @@ defmodule Ledger.Transaccion do
 
             if moneda_id != "" do
               case Moneda.obtener_moneda(moneda_id) do
-                nil ->
-                  {:error, "Moneda inexistente"}
+                {:error, razon} ->
+                  {:error, razon}
 
-                moneda ->
+                {:ok, moneda} ->
                   balance_en_moneda = cambiar_balance_a_moneda(balance_actualizado, moneda.id)
                   FileHandler.mostrar_balance(balance_en_moneda, archivo)
               end
@@ -318,8 +322,10 @@ defmodule Ledger.Transaccion do
             monto_actual - t.monto
           end)
           |> Map.update(t.moneda_destino_id, t.monto, fn monto_actual ->
-            monto_actual +
-              Moneda.cambiar_a_moneda(t.monto, t.moneda_origen_id, t.moneda_destino_id)
+            with {:ok, monto_cambiado} <-
+                   Moneda.cambiar_a_moneda(t.monto, t.moneda_origen_id, t.moneda_destino_id) do
+              monto_actual + monto_cambiado
+            end
           end)
 
         balance_actualizado
@@ -334,7 +340,10 @@ defmodule Ledger.Transaccion do
   defp cambiar_balance_a_moneda(balance, moneda_id) do
     total =
       Enum.reduce(balance, 0.0, fn {moneda_actual_id, monto}, acc ->
-        acc + Moneda.cambiar_a_moneda(monto, moneda_actual_id, moneda_id)
+        with {:ok, monto_cambiado} <-
+               Moneda.cambiar_a_moneda(monto, moneda_actual_id, moneda_id) do
+          acc + monto_cambiado
+        end
       end)
 
     %{moneda_id => total}

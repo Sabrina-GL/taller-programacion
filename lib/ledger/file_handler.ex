@@ -78,6 +78,41 @@ defmodule Ledger.FileHandler do
     end
   end
 
+  def mostrar_usuario(usuario, archivo) do
+    informacion =
+      """
+      ✦ . ⁺ . ✦ USUARIO #{usuario.id} ✦ . ⁺ . ✦
+      Nombre: #{usuario.nombre}
+      Fecha de Nacimiento: #{Date.to_iso8601(usuario.fecha_nacimiento)}
+      Creado: #{NaiveDateTime.to_iso8601(usuario.inserted_at)}
+      Modificado: #{NaiveDateTime.to_iso8601(usuario.updated_at)}
+
+      """
+
+    cond do
+      archivo == "stdout" -> IO.puts(informacion)
+      true -> File.write!(archivo, informacion <> "\n", [:append])
+    end
+
+    informacion
+  end
+
+  def mostrar_moneda(moneda, archivo) do
+    informacion =
+      """
+      ✦ . ⁺ . ✦ MONEDA #{moneda.id} ✦ . ⁺ . ✦
+      Nombre: #{moneda.nombre}
+      Precio: #{moneda.precio_usd}
+      """
+
+    cond do
+      archivo == "stdout" -> IO.puts(informacion)
+      true -> File.write!(archivo, informacion <> "\n", [:append])
+    end
+
+    informacion
+  end
+
   defp mostrar_linea_balance(moneda, monto, archivo) do
     nombre_moneda = Moneda.obtener_nombre(moneda)
     monto_decimales = :io_lib.format("~.6f", [monto]) |> to_string()
@@ -103,6 +138,9 @@ defmodule Ledger.FileHandler do
         [] ->
           case changeset.constraints do
             [%{type: :unique, constraint: "usuarios_nombre_index"} | _] ->
+              "El nombre ya está en uso"
+
+            [%{type: :unique, constraint: "monedas_nombre_index"} | _] ->
               "El nombre ya está en uso"
 
             _ ->

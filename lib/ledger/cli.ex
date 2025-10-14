@@ -97,10 +97,12 @@ defmodule Ledger.CLI do
   end
 
   defp efectuar_comando("editar_usuario", flags) do
-    Ledger.Usuario.editar_usuario(
-      Map.get(flags, "id", ""),
-      Map.get(flags, "n", "")
-    )
+    with {:ok, id} <- parsear_flag(Map.get(flags, "id", "")) do
+      Ledger.Usuario.editar_usuario(
+        id,
+        Map.get(flags, "n", "")
+      )
+    end
 
     # case parsear_flag(flags, "id", "") do
     #   {:error, razon} ->
@@ -115,11 +117,15 @@ defmodule Ledger.CLI do
   end
 
   defp efectuar_comando("borrar_usuario", flags) do
-    Ledger.Usuario.borrar_usuario(Map.get(flags, "id", ""))
+    with {:ok, id} <- parsear_flag(Map.get(flags, "id", "")) do
+      Ledger.Usuario.borrar_usuario(id)
+    end
   end
 
   defp efectuar_comando("ver_usuario", flags) do
-    Ledger.Usuario.ver_usuario(Map.get(flags, "id", ""))
+    with {:ok, id} <- parsear_flag(Map.get(flags, "id", "")) do
+      Ledger.Usuario.ver_usuario(id, Map.get(flags, "o", "stdout"))
+    end
   end
 
   defp efectuar_comando("crear_moneda", flags) do
@@ -130,81 +136,110 @@ defmodule Ledger.CLI do
   end
 
   defp efectuar_comando("editar_moneda", flags) do
-    Ledger.Moneda.editar_moneda(
-      Map.get(flags, "id", ""),
-      Map.get(flags, "p", "")
-    )
-  end
-
-  defp efectuar_comando("borrar_moneda", flags) do
-    Ledger.Moneda.borrar_moneda(Map.get(flags, "id", ""))
-  end
-
-  defp efectuar_comando("ver_moneda", flags) do
-    Ledger.Moneda.ver_moneda(Map.get(flags, "id", ""))
-  end
-
-  defp efectuar_comando("alta_cuenta", flags) do
-    usuario_id = Map.get(flags, "u", "")
-    moneda_id = Map.get(flags, "m", "")
-    monto = Map.get(flags, "a", "")
-
-    Ledger.Transaccion.alta_cuenta(usuario_id, moneda_id, monto)
-  end
-
-  defp efectuar_comando("realizar_transferencia", flags) do
-    cuenta_origen = parsear_flag(flags, "o")
-    cuenta_destino = parsear_flag(flags, "d")
-    moneda = parsear_flag(flags, "m")
-    monto = parsear_flag(flags, "a")
-
-    Ledger.Transaccion.realizar_transferencia(
-      cuenta_origen,
-      cuenta_destino,
-      moneda,
-      monto
-    )
-  end
-
-  defp efectuar_comando("realizar_swap", flags) do
-    cuenta = parsear_flag(flags, "u")
-    moneda_origen = parsear_flag(flags, "mo")
-    moneda_destino = parsear_flag(flags, "md")
-    monto = parsear_flag(flags, "a")
-
-    Ledger.Transaccion.realizar_swap(cuenta, moneda_origen, moneda_destino, monto)
-  end
-
-  defp parsear_flag(flags, key, default \\ "") do
-    case Map.get(flags, key, default) do
-      "" ->
-        {:ok, default}
-
-      value when is_binary(value) ->
-        case Integer.parse(value) do
-          {num, ""} ->
-            {:ok, num}
-
-          {_num, rest} ->
-            # "123abc" → error
-            {:error, "#{key} contiene caracteres no numéricos: '#{rest}'"}
-
-          :error ->
-            {:error, "#{key} debe ser un número válido"}
-        end
-
-      value ->
-        {:ok, value}
+    with {:ok, id} <- parsear_flag(Map.get(flags, "id", "")),
+         {:ok, precio} <- parsear_flag(Map.get(flags, "id", ""), "Precio") do
+      Ledger.Moneda.editar_moneda(
+        id,
+        precio
+      )
     end
   end
 
-  def parsear_id(id) do
-    case Integer.parse(id) do
-      {id_int, ""} ->
-        {:ok, id_int}
+  defp efectuar_comando("borrar_moneda", flags) do
+    with {:ok, id} <- parsear_flag(Map.get(flags, "id", "")) do
+      Ledger.Moneda.borrar_moneda(id)
+    end
+  end
+
+  defp efectuar_comando("ver_moneda", flags) do
+    with {:ok, id} <- parsear_flag(Map.get(flags, "id", "")) do
+      Ledger.Moneda.ver_moneda(id, Map.get(flags, "o", "stdout"))
+    end
+  end
+
+  defp efectuar_comando("alta_cuenta", flags) do
+    with {:ok, usuario_id} <- parsear_flag(Map.get(flags, "u", "")),
+         {:ok, moneda_id} <- parsear_flag(Map.get(flags, "m", "")),
+         {:ok, monto} <- parsear_flag(Map.get(flags, "a", ""), "Monto") do
+      Ledger.Transaccion.alta_cuenta(usuario_id, moneda_id, monto)
+    end
+  end
+
+  defp efectuar_comando("realizar_transferencia", flags) do
+    with {:ok, cuenta_origen} <- parsear_flag(Map.get(flags, "o", "")),
+         {:ok, cuenta_destino} <- parsear_flag(Map.get(flags, "d", "")),
+         {:ok, moneda} <- parsear_flag(Map.get(flags, "m", "")),
+         {:ok, monto} <- parsear_flag(Map.get(flags, "a", ""), "Monto") do
+      Ledger.Transaccion.realizar_transferencia(
+        cuenta_origen,
+        cuenta_destino,
+        moneda,
+        monto
+      )
+    end
+  end
+
+  defp efectuar_comando("realizar_swap", flags) do
+    with {:ok, cuenta} <- parsear_flag(Map.get(flags, "u", "")),
+         {:ok, moneda_origen} <- parsear_flag(Map.get(flags, "mo", "")),
+         {:ok, moneda_destino} <- parsear_flag(Map.get(flags, "md", "")),
+         {:ok, monto} <- parsear_flag(Map.get(flags, "a", ""), "Monto") do
+      Ledger.Transaccion.realizar_swap(cuenta, moneda_origen, moneda_destino, monto)
+    end
+  end
+
+  # defp parsear_flag(flags, key, default \\ "") do
+  #   case Map.get(flags, key, default) do
+  #     "" ->
+  #       {:ok, default}
+
+  #     value when is_binary(value) ->
+  #       case Integer.parse(value) do
+  #         {num, ""} ->
+  #           {:ok, num}
+
+  #         {_num, rest} ->
+  #           # "123abc" → error
+  #           {:error, "#{key} contiene caracteres no numéricos: '#{rest}'"}
+
+  #         :error ->
+  #           {:error, "#{key} debe ser un número válido"}
+  #       end
+
+  #     value ->
+  #       {:ok, value}
+  #   end
+  # end
+
+  # def parsear_id(id) do
+  #   case id do
+  #     id when is_integer(id) ->
+  #       {:ok, id}
+
+  #     id when is_binary(id) ->
+  #       case Integer.parse(id) do
+  #         {id_int, ""} -> {:ok, id_int}
+  #         _ -> {:error, "ID inválido, debe ser un número"}
+  #       end
+
+  #     _ ->
+  #       {:error, "ID inválido, debe ser un número"}
+  #   end
+  # end
+
+  def parsear_flag(valor, tipo \\ "ID") do
+    case valor do
+      valor when is_integer(valor) ->
+        {:ok, valor}
+
+      valor when is_binary(valor) ->
+        case Integer.parse(valor) do
+          {valor_int, ""} -> {:ok, valor_int}
+          _ -> {:error, "#{tipo} inválido, debe ser un número"}
+        end
 
       _ ->
-        {:error, "ID inválido, debe ser un número"}
+        {:error, "#{tipo} inválido, debe ser un número"}
     end
   end
 

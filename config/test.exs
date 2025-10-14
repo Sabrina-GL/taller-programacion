@@ -7,6 +7,7 @@ config :ledger, Ledger.Repo,
   hostname: "127.0.0.1",
   port: "5432",
   pool: Ecto.Adapters.SQL.Sandbox,
-  pool_size: 10
+  pool_size: 10,
+  log: false
 
 config :ledger, :sql_sandbox, true
