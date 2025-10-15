@@ -27,6 +27,8 @@ defmodule Ledger.Transaccion do
     end
   end
 
+  # TODO no permitir transferencia entre mismo usuario
+
   def realizar_transferencia(cuenta_origen_id, cuenta_destino_id, moneda_id, monto) do
     with {:ok, _usuario_origen} <- Usuario.obtener_usuario(cuenta_origen_id),
          {:ok, _usuario_destino} <- Usuario.obtener_usuario(cuenta_destino_id),
@@ -190,18 +192,16 @@ defmodule Ledger.Transaccion do
         |> Enum.reduce(balance, fn t, acc -> calcular_balance(acc, t, cuenta_id) end)
 
       if moneda_id != "" do
-        case Moneda.obtener_moneda(moneda_id) do
-          {:error, razon} ->
-            {:error, razon}
-
-          {:ok, moneda} ->
-            balance_en_moneda = cambiar_balance_a_moneda(balance_actualizado, moneda.id)
-            FileHandler.mostrar_balance(balance_en_moneda, archivo)
+        with {:ok, moneda} <- Moneda.obtener_moneda(moneda_id) do
+          balance_en_moneda = cambiar_balance_a_moneda(balance_actualizado, moneda.id)
+          FileHandler.mostrar_balance(balance_en_moneda, archivo)
         end
       else
         FileHandler.mostrar_balance(balance_actualizado, archivo)
       end
     end
+
+    {:ok, nil}
   end
 
   def changeset_crear(transaccion, attrs) do
@@ -340,22 +340,13 @@ defmodule Ledger.Transaccion do
   end
 
   defp calcular_balance_para_moneda(cuenta_id, moneda_id) do
-    case obtener_transacciones(cuenta_id, "") do
-      {:error, _} ->
-        0.0
+    with {:ok, transacciones_salientes} <- obtener_transacciones(cuenta_id, ""),
+         {:ok, transacciones_entrantes} <- obtener_transacciones("", cuenta_id) do
+      balance = %{}
 
-      {:ok, transacciones_salientes} ->
-        case obtener_transacciones("", cuenta_id) do
-          {:error, _} ->
-            0.0
-
-          {:ok, transacciones_entrantes} ->
-            balance = %{}
-
-            (transacciones_salientes ++ transacciones_entrantes)
-            |> Enum.reduce(balance, fn t, acc -> calcular_balance(acc, t, cuenta_id) end)
-            |> Map.get(moneda_id, 0.0)
-        end
+      (transacciones_salientes ++ transacciones_entrantes)
+      |> Enum.reduce(balance, fn t, acc -> calcular_balance(acc, t, cuenta_id) end)
+      |> Map.get(moneda_id, 0.0)
     end
   end
 

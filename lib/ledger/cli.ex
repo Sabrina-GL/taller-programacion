@@ -70,7 +70,7 @@ defmodule Ledger.CLI do
   - `{:ok, resultado}` si el comando se ejecutó exitosamente, donde `resultado` es el resultado del comando.
   - `{:error, razón}` si ocurrió algún error al ejecutar el comando.
   """
-  def efectuar_comando(flags, _cuentas, _monedas) do
+  def efectuar_comando(flags) do
     comando = flags["comando"]
 
     case efectuar_comando(comando, flags) do
@@ -87,8 +87,13 @@ defmodule Ledger.CLI do
   end
 
   defp efectuar_comando("balance", flags) do
-    with {:ok, c1} <- parsear_id(flags, "c1"),
-         {:ok, m} <- parsear_monto(flags, "m") do
+    with {:ok, c1} <- parsear_id(flags, "c1") do
+      m = Map.get(flags, "m", "")
+
+      if m != "" do
+        parsear_id(flags, "m")
+      end
+
       o = Map.get(flags, "o", "stdout")
       Ledger.Transaccion.listar_balance(c1, m, o)
     end
@@ -179,46 +184,7 @@ defmodule Ledger.CLI do
     end
   end
 
-  # defp parsear_flag(flags, key, default \\ "") do
-  #   case Map.get(flags, key, default) do
-  #     "" ->
-  #       {:ok, default}
-
-  #     value when is_binary(value) ->
-  #       case Integer.parse(value) do
-  #         {num, ""} ->
-  #           {:ok, num}
-
-  #         {_num, rest} ->
-  #           # "123abc" → error
-  #           {:error, "#{key} contiene caracteres no numéricos: '#{rest}'"}
-
-  #         :error ->
-  #           {:error, "#{key} debe ser un número válido"}
-  #       end
-
-  #     value ->
-  #       {:ok, value}
-  #   end
-  # end
-
-  # def parsear_id(id) do
-  #   case id do
-  #     id when is_integer(id) ->
-  #       {:ok, id}
-
-  #     id when is_binary(id) ->
-  #       case Integer.parse(id) do
-  #         {id_int, ""} -> {:ok, id_int}
-  #         _ -> {:error, "ID inválido, debe ser un número"}
-  #       end
-
-  #     _ ->
-  #       {:error, "ID inválido, debe ser un número"}
-  #   end
-  # end
-
-  def parsear_id(flags, flag) do
+  defp parsear_id(flags, flag) do
     id = Map.get(flags, flag, "")
 
     case id do
@@ -236,7 +202,7 @@ defmodule Ledger.CLI do
     end
   end
 
-  def parsear_monto(flags, flag) do
+  defp parsear_monto(flags, flag) do
     valor = Map.get(flags, flag, "")
 
     case valor do
