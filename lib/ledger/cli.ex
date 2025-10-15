@@ -17,7 +17,8 @@ defmodule Ledger.CLI do
     "ver_moneda",
     "alta_cuenta",
     "realizar_transferencia",
-    "realizar_swap"
+    "realizar_swap",
+    "deshacer_transaccion"
   ]
 
   @doc """
@@ -169,6 +170,12 @@ defmodule Ledger.CLI do
          {:ok, md} <- parsear_id(flags, "md"),
          {:ok, a} <- parsear_monto(flags, "a") do
       Ledger.Transaccion.realizar_swap(u, mo, md, a)
+    end
+  end
+
+  defp efectuar_comando("deshacer_transaccion", flags) do
+    with {:ok, id} <- parsear_id(flags, "id") do
+      Ledger.Transaccion.deshacer_transaccion(id)
     end
   end
 

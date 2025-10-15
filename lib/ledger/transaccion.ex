@@ -87,7 +87,38 @@ defmodule Ledger.Transaccion do
     end
   end
 
-  def deshacer_transaccion() do
+  def deshacer_transaccion(transaccion_id) do
+    case Repo.get(Ledger.Transaccion, transaccion_id) do
+      nil ->
+        {:error, "Transaccion no encontrada"}
+
+      t ->
+        case t.tipo do
+          "alta" ->
+            {:error, "No se puede deshacer un alta de cuenta"}
+
+          "swap" ->
+            case existe_cuenta?(t.cuenta_origen_id, t.moneda_destino_id) do
+              {:error, _} -> alta_cuenta_interna(t.cuenta_origen_id, t.moneda_destino_id, 0)
+              :ok -> nil
+            end
+
+            realizar_swap(t.cuenta_origen_id, t.moneda_destino_id, t.moneda_origen_id, t.monto)
+
+          "transferencia" ->
+            case existe_cuenta?(t.cuenta_destino_id, t.moneda_origen_id) do
+              {:error, _} -> alta_cuenta_interna(t.cuenta_destino_id, t.moneda_id, 0)
+              :ok -> nil
+            end
+
+            realizar_transferencia(
+              t.cuenta_destino_id,
+              t.cuenta_origen_id,
+              t.moneda_origen_id,
+              t.monto
+            )
+        end
+    end
   end
 
   def obtener_transacciones(cuenta_origen_id, cuenta_destino_id) do
@@ -384,15 +415,4 @@ defmodule Ledger.Transaccion do
 
     %{moneda_id => total}
   end
-
-  @doc """
-  Lista las transacciones filtradas por cuentas y las muestra en el destino especificado.
-
-  ## Parámetros
-  - `flags`: Mapa con las opciones de filtrado y salida.
-  - `cuentas`: Mapa con las cuentas existentes.
-  ## Retorno
-  - `{:ok, 0}` si la operación fue exitosa.
-  - `{:error, razón}` si ocurrió algún error.
-  """
 end

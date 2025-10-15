@@ -540,50 +540,94 @@ defmodule LedgerTest do
                Transaccion.realizar_transferencia(usuario1.id, usuario2.id, moneda.id, -1)
     end
 
-    #   test "transferencia con monto inválido" do
-    #     linea1 = ["1", "1756751403", "USDT", "", "100.0", "userA", "", "alta_cuenta"]
-    #     linea2 = ["2", "1756751404", "USDT", "", "100.0", "userB", "", "alta_cuenta"]
-    #     linea3 = ["3", "1756751405", "USDT", "USDT", "-50.0", "userA", "userB", "transferencia"]
-    #     linea4 = ["4", "1756751406", "USDT", "USDT", "abc", "userA", "userB", "transferencia"]
-    #     linea5 = ["5", "1756751407", "USDT", "USDT", "0.0", "userA", "userB", "transferencia"]
-    #     linea6 = ["6", "1756751408", "USDT", "USDT", "150.0", "userA", "userB", "transferencia"]
-    #     {:ok, cuentas} = Ledger.Transaction.valor_transaccion("alta_cuenta", %{}, linea1, @monedas)
+    test "deshacer_transaccion válido con ambas cuentas existentes deshace swap" do
+      {:ok, usuario} = Usuario.crear_usuario("userA", "1990-05-06")
+      {:ok, moneda1} = Moneda.crear_moneda("EUR", "1.18")
+      {:ok, moneda2} = Moneda.crear_moneda("USDT", "1")
+      {:ok, _} = Transaccion.alta_cuenta(usuario.id, moneda1.id, 5)
+      {:ok, _} = Transaccion.alta_cuenta(usuario.id, moneda2.id, 5)
+      {:ok, transaccion1} = Transaccion.realizar_swap(usuario.id, moneda1.id, moneda2.id, 5)
+      {:ok, transaccion2} = Transaccion.deshacer_transaccion(transaccion1.id)
 
-    #     {:ok, cuentas} =
-    #       Ledger.Transaction.valor_transaccion("alta_cuenta", cuentas, linea2, @monedas)
+      assert {"swap", usuario.id, moneda2.id, moneda1.id, 5} ==
+               {transaccion2.tipo, transaccion2.cuenta_origen_id, transaccion2.moneda_origen_id,
+                transaccion2.moneda_destino_id, transaccion2.monto}
+    end
 
-    #     assert {:error, "3"} ==
-    #              Ledger.Transaction.valor_transaccion("transferencia", cuentas, linea3, @monedas)
+    test "deshacer_transaccion válido con cuenta destino inexistente deshace swap" do
+      {:ok, usuario} = Usuario.crear_usuario("userA", "1990-05-06")
+      {:ok, moneda1} = Moneda.crear_moneda("EUR", "1.18")
+      {:ok, moneda2} = Moneda.crear_moneda("USDT", "1")
+      {:ok, _} = Transaccion.alta_cuenta(usuario.id, moneda1.id, 5)
+      {:ok, transaccion1} = Transaccion.realizar_swap(usuario.id, moneda1.id, moneda2.id, 5)
+      {:ok, transaccion2} = Transaccion.deshacer_transaccion(transaccion1.id)
 
-    #     assert {:error, "4"} ==
-    #              Ledger.Transaction.valor_transaccion("transferencia", cuentas, linea4, @monedas)
+      assert {"swap", usuario.id, moneda2.id, moneda1.id, 5} ==
+               {transaccion2.tipo, transaccion2.cuenta_origen_id, transaccion2.moneda_origen_id,
+                transaccion2.moneda_destino_id, transaccion2.monto}
+    end
 
-    #     assert {:error, "5"} ==
-    #              Ledger.Transaction.valor_transaccion("transferencia", cuentas, linea5, @monedas)
+    test "deshacer_transaccion a swap con id inválido" do
+      {:ok, usuario} = Usuario.crear_usuario("userA", "1990-05-06")
+      {:ok, moneda1} = Moneda.crear_moneda("EUR", "1.18")
+      {:ok, moneda2} = Moneda.crear_moneda("USDT", "1")
+      {:ok, _} = Transaccion.alta_cuenta(usuario.id, moneda1.id, 5)
+      {:ok, t} = Transaccion.alta_cuenta(usuario.id, moneda2.id, 5)
 
-    #     assert {:error, "6"} ==
-    #              Ledger.Transaction.valor_transaccion("transferencia", cuentas, linea6, @monedas)
-    #   end
+      assert {:error, "Transaccion no encontrada"} == Transaccion.deshacer_transaccion(99999)
+    end
 
-    #   test "transferencia con moneda origen y destino diferentes" do
-    #     linea1 = ["1", "1756751403", "USDT", "", "100.0", "userA", "", "alta_cuenta"]
-    #     linea2 = ["2", "1756751404", "USDT", "", "100.0", "userB", "", "alta_cuenta"]
-    #     linea3 = ["3", "1756751405", "USDT", "BTC", "50.0", "userA", "userB", "transferencia"]
-    #     {:ok, cuentas} = Ledger.Transaction.valor_transaccion("alta_cuenta", %{}, linea1, @monedas)
+    test "deshacer_transaccion válido con ambas cuentas existentes deshace transferencia" do
+      {:ok, usuario1} = Usuario.crear_usuario("userA", "1990-05-06")
+      {:ok, usuario2} = Usuario.crear_usuario("userB", "1990-05-06")
+      {:ok, moneda} = Moneda.crear_moneda("EUR", "1.18")
+      {:ok, _} = Transaccion.alta_cuenta(usuario1.id, moneda.id, 5)
+      {:ok, _} = Transaccion.alta_cuenta(usuario2.id, moneda.id, 5)
 
-    #     {:ok, cuentas} =
-    #       Ledger.Transaction.valor_transaccion("alta_cuenta", cuentas, linea2, @monedas)
+      {:ok, transaccion1} =
+        Transaccion.realizar_transferencia(usuario1.id, usuario2.id, moneda.id, 1)
 
-    #     assert {:error, "3"} ==
-    #              Ledger.Transaction.valor_transaccion("transferencia", cuentas, linea3, @monedas)
-    #   end
+      {:ok, transaccion2} = Transaccion.deshacer_transaccion(transaccion1.id)
 
-    #   test "transaccion invalida" do
-    #     linea = ["1", "1756751403", "USDT", "", "100.0", "userA", "", "asd"]
+      assert {"transferencia", usuario2.id, usuario1.id, moneda.id, 1} ==
+               {transaccion2.tipo, transaccion2.cuenta_origen_id, transaccion2.cuenta_destino_id,
+                transaccion2.moneda_origen_id, transaccion2.monto}
+    end
 
-    #     assert {:error, "1"} ==
-    #              Ledger.Transaction.valor_transaccion("asd", %{}, linea, @monedas)
-    #   end
+    test "deshacer_transaccion válido con cuenta destino inexistente deshace transferencia" do
+      {:ok, usuario1} = Usuario.crear_usuario("userA", "1990-05-06")
+      {:ok, usuario2} = Usuario.crear_usuario("userB", "1990-05-06")
+      {:ok, moneda} = Moneda.crear_moneda("EUR", "1.18")
+      {:ok, _} = Transaccion.alta_cuenta(usuario1.id, moneda.id, 5)
+
+      {:ok, transaccion1} =
+        Transaccion.realizar_transferencia(usuario1.id, usuario2.id, moneda.id, 1)
+
+      {:ok, transaccion2} = Transaccion.deshacer_transaccion(transaccion1.id)
+
+      assert {"transferencia", usuario2.id, usuario1.id, moneda.id, 1} ==
+               {transaccion2.tipo, transaccion2.cuenta_origen_id, transaccion2.cuenta_destino_id,
+                transaccion2.moneda_origen_id, transaccion2.monto}
+    end
+
+    test "deshacer_transaccion a transferencia con id inválido" do
+      {:ok, usuario1} = Usuario.crear_usuario("userA", "1990-05-06")
+      {:ok, usuario2} = Usuario.crear_usuario("userB", "1990-05-06")
+      {:ok, moneda} = Moneda.crear_moneda("EUR", "1.18")
+      {:ok, _} = Transaccion.alta_cuenta(usuario1.id, moneda.id, 5)
+      {:ok, _} = Transaccion.alta_cuenta(usuario2.id, moneda.id, 5)
+
+      assert {:error, "Transaccion no encontrada"} == Transaccion.deshacer_transaccion(99999)
+    end
+
+    test "deshacer_transaccion a alta_cuenta" do
+      {:ok, usuario} = Usuario.crear_usuario("userA", "1990-05-06")
+      {:ok, moneda} = Moneda.crear_moneda("EUR", "1.18")
+      {:ok, transaccion} = Transaccion.alta_cuenta(usuario.id, moneda.id, 5)
+
+      assert {:error, "No se puede deshacer un alta de cuenta"} ==
+               Transaccion.deshacer_transaccion(transaccion.id)
+    end
 
     #   test "procesar_transacciones con archivo válido" do
     #     contenido = """
