@@ -2,7 +2,7 @@ defmodule Ledger.Transaccion do
   use Ecto.Schema
   import Ecto.Changeset
   import Ecto.Query
-  alias Ledger.{Repo, Usuario, Moneda, FileHandler, CLI}
+  alias Ledger.{Repo, Usuario, Moneda, FileHandler}
 
   schema "transacciones" do
     field(:tipo, :string)
@@ -12,6 +12,165 @@ defmodule Ledger.Transaccion do
     belongs_to(:moneda_origen, Moneda)
     belongs_to(:moneda_destino, Moneda)
     timestamps()
+  end
+
+  # TODO: agregar precio actual de cada moneda en la transaccion por si se edita
+  # TODO: deshacer_transaccion
+
+  def alta_cuenta(usuario, moneda, monto) do
+    cond do
+      monto <= 0 ->
+        {:error, "El monto debe ser un número positivo"}
+
+      monto > 0 ->
+        alta_cuenta_interna(usuario, moneda, monto)
+    end
+  end
+
+  def realizar_transferencia(cuenta_origen_id, cuenta_destino_id, moneda_id, monto) do
+    with {:ok, _usuario_origen} <- Usuario.obtener_usuario(cuenta_origen_id),
+         {:ok, _usuario_destino} <- Usuario.obtener_usuario(cuenta_destino_id),
+         {:ok, _moneda} <- Moneda.obtener_moneda(moneda_id) do
+      case existe_cuenta?(cuenta_destino_id, moneda_id) do
+        {:error, _} -> alta_cuenta_interna(cuenta_destino_id, moneda_id, 0)
+        :ok -> nil
+      end
+
+      changeset =
+        %__MODULE__{}
+        |> changeset_crear(%{
+          tipo: "transferencia",
+          cuenta_origen_id: cuenta_origen_id,
+          cuenta_destino_id: cuenta_destino_id,
+          moneda_origen_id: moneda_id,
+          moneda_destino_id: moneda_id,
+          monto: monto
+        })
+
+      case Repo.insert(changeset) do
+        {:ok, transaccion} ->
+          {:ok, transaccion}
+
+        {:error, _razon} ->
+          {:error, FileHandler.extraer_error(changeset)}
+      end
+    end
+  end
+
+  def realizar_swap(
+        cuenta_id,
+        moneda_origen_id,
+        moneda_destino_id,
+        monto
+      ) do
+    with {:ok, _usuario} <- Usuario.obtener_usuario(cuenta_id),
+         {:ok, _moneda_origen} <- Moneda.obtener_moneda(moneda_origen_id),
+         {:ok, _moneda_destino} <- Moneda.obtener_moneda(moneda_destino_id),
+         :ok <- existe_cuenta?(cuenta_id, moneda_origen_id) do
+      changeset =
+        %__MODULE__{}
+        |> changeset_crear(%{
+          tipo: "swap",
+          cuenta_origen_id: cuenta_id,
+          moneda_origen_id: moneda_origen_id,
+          moneda_destino_id: moneda_destino_id,
+          monto: monto
+        })
+
+      case Repo.insert(changeset) do
+        {:ok, transaccion} ->
+          {:ok, transaccion}
+
+        {:error, _razon} ->
+          {:error, FileHandler.extraer_error(changeset)}
+      end
+    end
+  end
+
+  def deshacer_transaccion() do
+  end
+
+  def obtener_transacciones(cuenta_origen_id, cuenta_destino_id) do
+    with :ok <- validar_cuenta(cuenta_origen_id),
+         :ok <- validar_cuenta(cuenta_destino_id) do
+      query =
+        from(t in Ledger.Transaccion,
+          preload: [:cuenta_origen, :cuenta_destino]
+        )
+
+      query =
+        case {cuenta_origen_id, cuenta_destino_id} do
+          {"", ""} ->
+            query
+
+          {co, ""} ->
+            from(t in query,
+              where: t.cuenta_origen_id == ^co
+            )
+
+          {"", cd} ->
+            from(t in query,
+              where: t.cuenta_destino_id == ^cd
+            )
+
+          {co, cd} ->
+            from(t in query,
+              where:
+                t.cuenta_origen_id == ^co and
+                  t.cuenta_destino_id == ^cd
+            )
+        end
+
+      transacciones = Ledger.Repo.all(query) || []
+
+      {:ok, transacciones}
+    end
+  end
+
+  def listar_transacciones(c1, c2, _o) do
+    with {:ok, transacciones} <- obtener_transacciones(c1, c2) do
+      Enum.each(transacciones, fn t ->
+        IO.puts("""
+        ----------------------------
+        Id: #{t.id}
+        Tipo: #{t.tipo}
+        Monto: #{t.monto}
+        Id cuenta origen: #{t.cuenta_origen_id}
+        Id cuenta destino: #{t.cuenta_destino_id}
+        Id moneda origen: #{t.moneda_origen_id}
+        Id moneda destino: #{t.moneda_destino_id}
+        Fecha: #{t.inserted_at}
+        ----------------------------
+        """)
+      end)
+
+      {:ok, transacciones}
+    end
+  end
+
+  def listar_balance(cuenta_id, moneda_id, archivo) do
+    balance = %{}
+
+    with {:ok, transacciones_salientes} <- obtener_transacciones(cuenta_id, ""),
+         {:ok, transacciones_entrantes} <- obtener_transacciones("", cuenta_id) do
+      balance_actualizado =
+        (transacciones_salientes ++ transacciones_entrantes)
+        |> Enum.sort_by(& &1.inserted_at, {:asc, NaiveDateTime})
+        |> Enum.reduce(balance, fn t, acc -> calcular_balance(acc, t, cuenta_id) end)
+
+      if moneda_id != "" do
+        case Moneda.obtener_moneda(moneda_id) do
+          {:error, razon} ->
+            {:error, razon}
+
+          {:ok, moneda} ->
+            balance_en_moneda = cambiar_balance_a_moneda(balance_actualizado, moneda.id)
+            FileHandler.mostrar_balance(balance_en_moneda, archivo)
+        end
+      else
+        FileHandler.mostrar_balance(balance_actualizado, archivo)
+      end
+    end
   end
 
   def changeset_crear(transaccion, attrs) do
@@ -39,11 +198,12 @@ defmodule Ledger.Transaccion do
       "alta" ->
         changeset
         |> validate_number(:monto,
-          greater_than: 0,
+          greater_than_or_equal_to: 0,
           message: "El monto debe ser un número positivo"
         )
         |> foreign_key_constraint(:cuenta_origen_id)
         |> foreign_key_constraint(:moneda_origen_id)
+        |> validar_cuenta_no_existe()
 
       "transferencia" ->
         changeset
@@ -68,14 +228,39 @@ defmodule Ledger.Transaccion do
         |> foreign_key_constraint(:cuenta_origen_id)
         |> foreign_key_constraint(:moneda_origen_id)
         |> foreign_key_constraint(:moneda_destino_id)
+        |> validar_saldo_sufieciente()
 
       _ ->
         add_error(changeset, :tipo, "Tipo de transacción inválido")
     end
   end
 
-  # TODO: chequear si ya existe cuenta
-  def alta_cuenta(usuario, moneda, monto) do
+  defp validar_cuenta_no_existe(changeset) do
+    usuario_id = get_field(changeset, :cuenta_origen_id)
+    moneda_id = get_field(changeset, :moneda_origen_id)
+
+    if existe_cuenta?(usuario_id, moneda_id) == :ok do
+      add_error(changeset, :cuenta_origen_id, "Ya existe una cuenta para este usuario y moneda")
+    else
+      changeset
+    end
+  end
+
+  defp validar_saldo_sufieciente(changeset) do
+    usuario_id = get_field(changeset, :cuenta_origen_id)
+    moneda_id = get_field(changeset, :moneda_origen_id)
+    monto = get_field(changeset, :monto)
+
+    saldo = calcular_balance_para_moneda(usuario_id, moneda_id)
+
+    if saldo < monto do
+      add_error(changeset, :monto, "Saldo insuficiente")
+    else
+      changeset
+    end
+  end
+
+  defp alta_cuenta_interna(usuario, moneda, monto) do
     with {:ok, _usuario} <- Usuario.obtener_usuario(usuario),
          {:ok, _moneda} <- Moneda.obtener_moneda(moneda) do
       changeset =
@@ -97,195 +282,48 @@ defmodule Ledger.Transaccion do
     end
   end
 
-  # def changeset_transferencia(transaccion, attrs) do
-  #   transaccion
-  #   |> cast(attrs, [
-  #     :tipo,
-  #     :cuenta_origen_id,
-  #     :cuenta_destino_id,
-  #     :moneda_origen_id,
-  #     :moneda_destino_id,
-  #     :monto
-  #   ])
-  #   |> validate_required([
-  #     :tipo,
-  #     :cuenta_origen_id,
-  #     :cuenta_destino_id,
-  #     :moneda_origen_id,
-  #     :moneda_destino_id,
-  #     :monto
-  #   ])
-  #   |> validar_segun_tipo()
-  # end
+  defp existe_cuenta?(usuario_id, moneda_id) do
+    existe =
+      Repo.exists?(
+        from(t in Ledger.Transaccion,
+          where:
+            t.tipo == "alta" and t.cuenta_origen_id == ^usuario_id and
+              t.moneda_origen_id == ^moneda_id
+        )
+      )
 
-  # TODO: verificar que tiene dinero para hacer la transferencia
-  def realizar_transferencia(cuenta_origen_id, cuenta_destino_id, moneda_id, monto) do
-    changeset =
-      %__MODULE__{}
-      |> changeset_crear(%{
-        tipo: "transferencia",
-        cuenta_origen_id: cuenta_origen_id,
-        cuenta_destino_id: cuenta_destino_id,
-        moneda_origen_id: moneda_id,
-        moneda_destino_id: moneda_id,
-        monto: monto
-      })
-
-    case Repo.insert(changeset) do
-      {:ok, transaccion} ->
-        {:ok, transaccion}
-
-      {:error, razon} ->
-        {:error, razon}
+    if existe do
+      :ok
+    else
+      {:error, "No hay una cuenta asociada con esa moneda"}
     end
   end
 
-  def realizar_swap(
-        cuenta_id,
-        moneda_origen_id,
-        moneda_destino_id,
-        monto
-      ) do
-    changeset =
-      %__MODULE__{}
-      |> changeset_crear(%{
-        tipo: "swap",
-        cuenta_origen_id: cuenta_id,
-        moneda_origen_id: moneda_origen_id,
-        moneda_destino_id: moneda_destino_id,
-        monto: monto
-      })
+  defp validar_cuenta(""), do: :ok
 
-    case Repo.insert(changeset) do
-      {:ok, transaccion} ->
-        {:ok, transaccion}
-
-      {:error, razon} ->
-        {:error, razon}
+  defp validar_cuenta(cuenta_id) do
+    case Usuario.obtener_usuario(cuenta_id) do
+      {:ok, _} -> :ok
+      {:error, _} -> {:error, "Se proporcionó una cuenta inexistente"}
     end
   end
 
-  defp existe_cuenta?(cuenta_id) do
-    case(Usuario.obtener_usuario(cuenta_id)) do
-      nil ->
-        false
-
-      _cuenta ->
-        true
-    end
-  end
-
-  defp obtener_transacciones(cuenta_origen_id, cuenta_destino_id) do
-    cond do
-      (cuenta_origen_id == "" or existe_cuenta?(cuenta_origen_id)) and
-          (cuenta_destino_id == "" or existe_cuenta?(cuenta_destino_id)) ->
-        query =
-          from(t in Ledger.Transaccion,
-            preload: [:cuenta_origen, :cuenta_destino]
-          )
-
-        query =
-          case {cuenta_origen_id, cuenta_destino_id} do
-            {"", ""} ->
-              query
-
-            {co, ""} ->
-              from(t in query,
-                where: t.cuenta_origen_id == ^co
-              )
-
-            {"", cd} ->
-              from(t in query,
-                where: t.cuenta_destino_id == ^cd
-              )
-
-            {co, cd} ->
-              from(t in query,
-                where:
-                  t.cuenta_origen_id == ^co and
-                    t.cuenta_destino_id == ^cd
-              )
-          end
-
-        transacciones = Ledger.Repo.all(query) || []
-
-        {:ok, transacciones}
-
-      true ->
-        {:error, "Se proporcionó una cuenta inexistente"}
-    end
-  end
-
-  @doc """
-  Lista las transacciones filtradas por cuentas y las muestra en el destino especificado.
-
-  ## Parámetros
-  - `flags`: Mapa con las opciones de filtrado y salida.
-  - `cuentas`: Mapa con las cuentas existentes.
-  ## Retorno
-  - `{:ok, 0}` si la operación fue exitosa.
-  - `{:error, razón}` si ocurrió algún error.
-  """
-  def listar_transacciones(flags) do
-    c1 = Map.get(flags, "c1", "")
-    c2 = Map.get(flags, "c2", "")
-    # o = Map.get(flags, "o", "stdout")
-    case obtener_transacciones(c1, c2) do
-      {:error, razon} ->
-        {:error, razon}
-
-      {:ok, transacciones} ->
-        Enum.each(transacciones, fn t ->
-          IO.puts("""
-          ----------------------------
-          Id: #{t.id}
-          Tipo: #{t.tipo}
-          Monto: #{t.monto}
-          Id cuenta origen: #{t.cuenta_origen_id}
-          Id cuenta destino: #{t.cuenta_destino_id}
-          Id moneda origen: #{t.moneda_origen_id}
-          Id moneda destino: #{t.moneda_destino_id}
-          Fecha: #{t.inserted_at}
-          ----------------------------
-          """)
-        end)
-
-        {:ok, 0}
-    end
-  end
-
-  def listar_balance(cuenta_id, moneda_id, archivo) do
-    balance = %{}
-
+  defp calcular_balance_para_moneda(cuenta_id, moneda_id) do
     case obtener_transacciones(cuenta_id, "") do
-      {:error, razon} ->
-        {:error, razon}
+      {:error, _} ->
+        0.0
 
       {:ok, transacciones_salientes} ->
         case obtener_transacciones("", cuenta_id) do
-          {:error, razon} ->
-            {:error, razon}
+          {:error, _} ->
+            0.0
 
           {:ok, transacciones_entrantes} ->
-            balance_actualizado =
-              (transacciones_salientes ++ transacciones_entrantes)
-              |> Enum.sort_by(& &1.inserted_at, {:asc, NaiveDateTime})
-              |> Enum.reduce(balance, fn t, acc -> calcular_balance(acc, t, cuenta_id) end)
+            balance = %{}
 
-            if moneda_id != "" do
-              case Moneda.obtener_moneda(moneda_id) do
-                {:error, razon} ->
-                  {:error, razon}
-
-                {:ok, moneda} ->
-                  balance_en_moneda = cambiar_balance_a_moneda(balance_actualizado, moneda.id)
-                  FileHandler.mostrar_balance(balance_en_moneda, archivo)
-              end
-            else
-              FileHandler.mostrar_balance(balance_actualizado, archivo)
-            end
-
-            {:ok, 0}
+            (transacciones_salientes ++ transacciones_entrantes)
+            |> Enum.reduce(balance, fn t, acc -> calcular_balance(acc, t, cuenta_id) end)
+            |> Map.get(moneda_id, 0.0)
         end
     end
   end
@@ -332,8 +370,6 @@ defmodule Ledger.Transaccion do
 
       true ->
         balance
-        # IO.puts("⚠️ Transacción desconocida o sin coincidencia:")
-        # IO.inspect(t)
     end
   end
 
@@ -348,4 +384,15 @@ defmodule Ledger.Transaccion do
 
     %{moneda_id => total}
   end
+
+  @doc """
+  Lista las transacciones filtradas por cuentas y las muestra en el destino especificado.
+
+  ## Parámetros
+  - `flags`: Mapa con las opciones de filtrado y salida.
+  - `cuentas`: Mapa con las cuentas existentes.
+  ## Retorno
+  - `{:ok, 0}` si la operación fue exitosa.
+  - `{:error, razón}` si ocurrió algún error.
+  """
 end

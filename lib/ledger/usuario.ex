@@ -1,7 +1,7 @@
 defmodule Ledger.Usuario do
   use Ecto.Schema
   import Ecto.Changeset
-  alias Ledger.{Repo, FileHandler, CLI}
+  alias Ledger.{Repo, FileHandler, Transaccion}
 
   schema "usuarios" do
     field(:nombre, :string)
@@ -102,15 +102,26 @@ defmodule Ledger.Usuario do
   end
 
   def borrar_usuario(id) do
-    case obtener_usuario(id) do
-      {:error, razon} ->
-        {:error, razon}
+    with {:ok, usuario} <- obtener_usuario(id),
+         :ok <- puede_borrarse(id) do
+      case Repo.delete(usuario) do
+        {:ok, _struct} -> {:ok, "Usuario borrado exitosamente"}
+        {:error, razon} -> {:error, razon}
+      end
+    end
+  end
 
-      {:ok, usuario} ->
-        case Repo.delete(usuario) do
-          {:ok, _struct} -> {:ok, "Usuario borrado exitosamente"}
-          {:error, razon} -> {:error, razon}
-        end
+  defp puede_borrarse(id) do
+    with {:ok, transacciones_salientes} <- Transaccion.obtener_transacciones(id, ""),
+         {:ok, transacciones_entrantes} <- Transaccion.obtener_transacciones("", id) do
+      transacciones = transacciones_salientes ++ transacciones_entrantes
+      transacciones_no_alta = Enum.filter(transacciones, &(&1.tipo != "alta"))
+
+      if Enum.empty?(transacciones_no_alta) do
+        :ok
+      else
+        {:error, "El usuario tiene transacciones asociadas"}
+      end
     end
   end
 

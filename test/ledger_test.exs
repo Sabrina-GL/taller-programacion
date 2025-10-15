@@ -106,6 +106,17 @@ defmodule LedgerTest do
     test "borrar_usuario con usuario inexistente" do
       assert {:error, "Usuario no encontrado"} == Usuario.borrar_usuario(1)
     end
+
+    test "borrar_usuario con transacciones asociadas" do
+      {:ok, usuario} = Usuario.crear_usuario("userA", "1990-05-06")
+      {:ok, moneda1} = Moneda.crear_moneda("EUR", "1.18")
+      {:ok, moneda2} = Moneda.crear_moneda("USDT", "1")
+      {:ok, _} = Transaccion.alta_cuenta(usuario.id, moneda1.id, 5)
+      {:ok, _} = Transaccion.realizar_swap(usuario.id, moneda1.id, moneda2.id, 5)
+
+      assert {:error, "El usuario tiene transacciones asociadas"} ==
+               Usuario.borrar_usuario(usuario.id)
+    end
   end
 
   describe "Tests para Ledger.Moneda" do
@@ -123,14 +134,11 @@ defmodule LedgerTest do
     end
 
     test "crear_moneda con precio inválido" do
-      assert {:error, "El precio debe ser un número positivo"} ==
+      assert {:error, "El precio en dólares es obligatorio"} ==
                Moneda.crear_moneda("EUR", "")
 
       assert {:error, "El precio debe ser un número positivo"} ==
                Moneda.crear_moneda("EUR", "0")
-
-      assert {:error, "El precio debe ser un número positivo"} ==
-               Moneda.crear_moneda("EUR", "asd")
 
       assert {:error, "El precio debe ser un número positivo"} ==
                Moneda.crear_moneda("EUR", "-1")
@@ -202,6 +210,17 @@ defmodule LedgerTest do
 
     test "borrar_moneda con moneda inexistente" do
       assert {:error, "Moneda no encontrada"} == Moneda.borrar_moneda(1)
+    end
+
+    test "borrar_moneda con transacciones asociadas" do
+      {:ok, usuario} = Usuario.crear_usuario("userA", "1990-05-06")
+      {:ok, moneda1} = Moneda.crear_moneda("EUR", "1.18")
+      {:ok, moneda2} = Moneda.crear_moneda("USDT", "1")
+      {:ok, _} = Transaccion.alta_cuenta(usuario.id, moneda1.id, 5)
+      {:ok, _} = Transaccion.realizar_swap(usuario.id, moneda1.id, moneda2.id, 5)
+
+      assert {:error, "La moneda tiene transacciones asociadas"} ==
+               Moneda.borrar_moneda(moneda1.id)
     end
   end
 
@@ -328,6 +347,16 @@ defmodule LedgerTest do
                {"alta", usuario.id, moneda.id, 5}
     end
 
+    test "alta_cuenta con monto float" do
+      {:ok, usuario} = Usuario.crear_usuario("userA", "1990-05-06")
+      {:ok, moneda} = Moneda.crear_moneda("EUR", "1.18")
+      {:ok, transaccion} = Transaccion.alta_cuenta(usuario.id, moneda.id, 5.56)
+
+      assert {transaccion.tipo, transaccion.cuenta_origen_id, transaccion.moneda_origen_id,
+              transaccion.monto} ==
+               {"alta", usuario.id, moneda.id, 5.56}
+    end
+
     test "alta_cuenta con usuario y moneda inexistentes" do
       {:ok, usuario} = Usuario.crear_usuario("userA", "1990-05-06")
       {:ok, moneda} = Moneda.crear_moneda("EUR", "1.18")
@@ -344,134 +373,172 @@ defmodule LedgerTest do
       {:ok, usuario} = Usuario.crear_usuario("userA", "1990-05-06")
       {:ok, moneda} = Moneda.crear_moneda("EUR", "1.18")
 
-      assert {:error, "El monto"} == Transaccion.alta_cuenta(usuario.id, moneda.id, 0)
-      assert {:error, "El monto"} == Transaccion.alta_cuenta(usuario.id, moneda.id, -1)
+      assert {:error, "El monto debe ser un número positivo"} ==
+               Transaccion.alta_cuenta(usuario.id, moneda.id, 0)
+
+      assert {:error, "El monto debe ser un número positivo"} ==
+               Transaccion.alta_cuenta(usuario.id, moneda.id, -1)
     end
 
-    # TODO: monto y precio moneda ahora solo puede ser int, deberian poder ser float
+    test "alta_cuenta con una cuenta preexistente" do
+      {:ok, usuario} = Usuario.crear_usuario("userA", "1990-05-06")
+      {:ok, moneda} = Moneda.crear_moneda("EUR", "1.18")
+      {:ok, _} = Transaccion.alta_cuenta(usuario.id, moneda.id, 5)
 
-    #   test "hacer alta_cuenta con monto inválido" do
-    #     linea1 = ["1", "1756751404", "USDT", "", "-2.0", "userA", "", "alta_cuenta"]
-    #     linea2 = ["2", "1756751404", "USDT", "", "abc", "userA", "", "alta_cuenta"]
-    #     linea3 = ["3", "1756751404", "USDT", "", "0.0", "userA", "", "alta_cuenta"]
+      assert {:error, "Ya existe una cuenta para este usuario y moneda"} ==
+               Transaccion.alta_cuenta(usuario.id, moneda.id, 6)
+    end
 
-    #     assert {:error, "1"} ==
-    #              Ledger.Transaction.valor_transaccion("alta_cuenta", %{}, linea1, @monedas)
+    test "alta_cuenta de diferentes cuentas con mismo usuario" do
+      {:ok, usuario} = Usuario.crear_usuario("userA", "1990-05-06")
+      {:ok, moneda1} = Moneda.crear_moneda("EUR", "1.18")
+      {:ok, moneda2} = Moneda.crear_moneda("USDT", "1")
+      {:ok, transaccion1} = Transaccion.alta_cuenta(usuario.id, moneda1.id, 5)
+      {:ok, transaccion2} = Transaccion.alta_cuenta(usuario.id, moneda2.id, 5)
 
-    #     assert {:error, "2"} ==
-    #              Ledger.Transaction.valor_transaccion("alta_cuenta", %{}, linea2, @monedas)
+      assert {transaccion1.tipo, transaccion1.cuenta_origen_id, transaccion1.moneda_origen_id,
+              transaccion1.monto} ==
+               {"alta", usuario.id, moneda1.id, 5}
 
-    #     assert {:error, "3"} ==
-    #              Ledger.Transaction.valor_transaccion("alta_cuenta", %{}, linea3, @monedas)
-    #   end
+      assert {transaccion2.tipo, transaccion2.cuenta_origen_id, transaccion2.moneda_origen_id,
+              transaccion2.monto} ==
+               {"alta", usuario.id, moneda2.id, 5}
+    end
 
-    #   test "alta_cuenta con una cuenta preexistente" do
-    #     linea1 = ["2", "1756751404", "USDT", "", "2.0", "userA", "", "alta_cuenta"]
-    #     linea2 = ["3", "1756751405", "USDT", "", "3.0", "userA", "", "alta_cuenta"]
-    #     {:ok, cuentas} = Ledger.Transaction.valor_transaccion("alta_cuenta", %{}, linea1, @monedas)
+    test "realizar_swap válido" do
+      {:ok, usuario} = Usuario.crear_usuario("userA", "1990-05-06")
+      {:ok, moneda1} = Moneda.crear_moneda("EUR", "1.18")
+      {:ok, moneda2} = Moneda.crear_moneda("USDT", "1")
+      {:ok, _} = Transaccion.alta_cuenta(usuario.id, moneda1.id, 5)
+      {:ok, transaccion2} = Transaccion.realizar_swap(usuario.id, moneda1.id, moneda2.id, 5)
 
-    #     assert {:error, "3"} ==
-    #              Ledger.Transaction.valor_transaccion("alta_cuenta", cuentas, linea2, @monedas)
-    #   end
+      assert {transaccion2.tipo, transaccion2.cuenta_origen_id, transaccion2.moneda_origen_id,
+              transaccion2.moneda_destino_id,
+              transaccion2.monto} ==
+               {"swap", usuario.id, moneda1.id, moneda2.id, 5}
+    end
 
-    #   test "swap válido" do
-    #     linea1 = ["2", "1756751404", "BTC", "", "2.0", "userA", "", "alta_cuenta"]
-    #     linea2 = ["3", "1756751405", "BTC", "USDT", "1.0", "userA", "", "swap"]
-    #     {:ok, cuentas} = Ledger.Transaction.valor_transaccion("alta_cuenta", %{}, linea1, @monedas)
-    #     esperado = %{"userA" => %{"BTC" => 1.0, "USDT" => 55000.0}}
+    test "realizar_swap con usuario inexistente" do
+      {:ok, moneda1} = Moneda.crear_moneda("EUR", "1.18")
+      {:ok, moneda2} = Moneda.crear_moneda("USDT", "1")
 
-    #     assert {:ok, esperado} ==
-    #              Ledger.Transaction.valor_transaccion("swap", cuentas, linea2, @monedas)
-    #   end
+      assert {:error, "Usuario no encontrado"} ==
+               Transaccion.realizar_swap(1, moneda1.id, moneda2.id, 5)
+    end
 
-    #   test "swap con cuenta inexistente" do
-    #     linea = ["3", "1756751405", "BTC", "USDT", "1.0", "userA", "", "swap"]
+    test "realizar_swap con moneda inválida" do
+      {:ok, usuario} = Usuario.crear_usuario("userA", "1990-05-06")
+      {:ok, moneda1} = Moneda.crear_moneda("EUR", "1.18")
+      {:ok, moneda2} = Moneda.crear_moneda("USDT", "1")
+      {:ok, moneda3} = Moneda.crear_moneda("BTC", "55000")
+      moneda_borrada_id = moneda3.id
+      {:ok, _} = Moneda.borrar_moneda(moneda_borrada_id)
 
-    #     assert {:error, "3"} ==
-    #              Ledger.Transaction.valor_transaccion("swap", %{}, linea, @monedas)
-    #   end
+      assert {:error, "Moneda no encontrada"} ==
+               Transaccion.realizar_swap(usuario.id, moneda_borrada_id, moneda2.id, 5)
 
-    #   test "swap con moneda inválida" do
-    #     linea1 = ["1", "1756751404", "BTC", "", "2.0", "userA", "", "alta_cuenta"]
-    #     linea2 = ["2", "1756751405", "VERDES", "USDT", "1.0", "userA", "", "swap"]
-    #     linea3 = ["3", "1756751406", "BTC", "", "1.0", "userA", "", "swap"]
-    #     {:ok, cuentas} = Ledger.Transaction.valor_transaccion("alta_cuenta", %{}, linea1, @monedas)
+      assert {:error, "Moneda no encontrada"} ==
+               Transaccion.realizar_swap(usuario.id, moneda1.id, moneda_borrada_id, 5)
+    end
 
-    #     assert {:error, "2"} ==
-    #              Ledger.Transaction.valor_transaccion("swap", cuentas, linea2, @monedas)
+    test "realizar_swap con cuenta inexistente" do
+      {:ok, usuario} = Usuario.crear_usuario("userA", "1990-05-06")
 
-    #     assert {:error, "3"} ==
-    #              Ledger.Transaction.valor_transaccion("swap", cuentas, linea3, @monedas)
-    #   end
+      {:ok, moneda1} = Moneda.crear_moneda("EUR", "1.18")
+      {:ok, moneda2} = Moneda.crear_moneda("USDT", "1")
 
-    #   test "swap con monto inválido" do
-    #     linea1 = ["1", "1756751404", "BTC", "", "2.0", "userA", "", "alta_cuenta"]
-    #     linea2 = ["2", "1756751405", "BTC", "USDT", "-1.0", "userA", "", "swap"]
-    #     linea3 = ["3", "1756751406", "BTC", "USDT", "abc", "userA", "", "swap"]
-    #     linea4 = ["4", "1756751407", "BTC", "USDT", "0.0", "userA", "", "swap"]
-    #     linea5 = ["5", "1756751407", "BTC", "USDT", "3.0", "userA", "", "swap"]
-    #     {:ok, cuentas} = Ledger.Transaction.valor_transaccion("alta_cuenta", %{}, linea1, @monedas)
+      assert {:error, "No hay una cuenta asociada con esa moneda"} ==
+               Transaccion.realizar_swap(usuario.id, moneda1.id, moneda2.id, 5)
+    end
 
-    #     assert {:error, "2"} ==
-    #              Ledger.Transaction.valor_transaccion("swap", cuentas, linea2, @monedas)
+    test "realizar_swap con monto inválido" do
+      {:ok, usuario} = Usuario.crear_usuario("userA", "1990-05-06")
+      {:ok, moneda1} = Moneda.crear_moneda("EUR", "1.18")
+      {:ok, moneda2} = Moneda.crear_moneda("USDT", "1")
+      {:ok, _} = Transaccion.alta_cuenta(usuario.id, moneda1.id, 5)
 
-    #     assert {:error, "3"} ==
-    #              Ledger.Transaction.valor_transaccion("swap", cuentas, linea3, @monedas)
+      assert {:error, "El monto debe ser un número positivo"} ==
+               Transaccion.realizar_swap(usuario.id, moneda1.id, moneda2.id, 0)
 
-    #     assert {:error, "4"} ==
-    #              Ledger.Transaction.valor_transaccion("swap", cuentas, linea4, @monedas)
+      assert {:error, "El monto debe ser un número positivo"} ==
+               Transaccion.realizar_swap(usuario.id, moneda1.id, moneda2.id, -1)
+    end
 
-    #     assert {:error, "5"} ==
-    #              Ledger.Transaction.valor_transaccion("swap", cuentas, linea5, @monedas)
-    #   end
+    test "realizar_swap con saldo insuficiente" do
+      {:ok, usuario} = Usuario.crear_usuario("userA", "1990-05-06")
+      {:ok, moneda1} = Moneda.crear_moneda("EUR", "1.18")
+      {:ok, moneda2} = Moneda.crear_moneda("USDT", "1")
+      {:ok, _} = Transaccion.alta_cuenta(usuario.id, moneda1.id, 5)
 
-    #   test "transferencia válida" do
-    #     linea1 = ["2", "1756751404", "USDT", "", "100.0", "userA", "", "alta_cuenta"]
-    #     linea2 = ["3", "1756751405", "USDT", "", "50.0", "userB", "", "alta_cuenta"]
-    #     linea3 = ["4", "1756751406", "USDT", "USDT", "30.0", "userA", "userB", "transferencia"]
-    #     {:ok, cuentas} = Ledger.Transaction.valor_transaccion("alta_cuenta", %{}, linea1, @monedas)
+      assert {:error, "Saldo insuficiente"} ==
+               Transaccion.realizar_swap(usuario.id, moneda1.id, moneda2.id, 10)
+    end
 
-    #     {:ok, cuentas} =
-    #       Ledger.Transaction.valor_transaccion("alta_cuenta", cuentas, linea2, @monedas)
+    test "realizar_transferencia válida con cuentas existentes" do
+      {:ok, usuario1} = Usuario.crear_usuario("userA", "1990-05-06")
+      {:ok, usuario2} = Usuario.crear_usuario("userB", "1990-05-07")
+      {:ok, moneda} = Moneda.crear_moneda("EUR", "1.18")
+      {:ok, _} = Transaccion.alta_cuenta(usuario1.id, moneda.id, 5)
+      {:ok, _} = Transaccion.alta_cuenta(usuario2.id, moneda.id, 5)
 
-    #     esperado = %{"userA" => %{"USDT" => 70.0}, "userB" => %{"USDT" => 80.0}}
+      {:ok, transaccion} =
+        Transaccion.realizar_transferencia(usuario1.id, usuario2.id, moneda.id, 1)
 
-    #     assert {:ok, esperado} ==
-    #              Ledger.Transaction.valor_transaccion("transferencia", cuentas, linea3, @monedas)
-    #   end
+      assert {transaccion.tipo, transaccion.cuenta_origen_id, transaccion.cuenta_destino_id,
+              transaccion.moneda_origen_id,
+              transaccion.monto} == {"transferencia", usuario1.id, usuario2.id, moneda.id, 1}
+    end
 
-    #   test "transferencia con cuenta origen inexistente" do
-    #     linea = ["3", "1756751405", "USDT", "USDT", "50.0", "userA", "userB", "transferencia"]
+    test "realizar_transferencia válida con cuenta destino inexistente" do
+      {:ok, usuario1} = Usuario.crear_usuario("userA", "1990-05-06")
+      {:ok, usuario2} = Usuario.crear_usuario("userB", "1990-05-07")
+      {:ok, moneda} = Moneda.crear_moneda("EUR", "1.18")
+      {:ok, _} = Transaccion.alta_cuenta(usuario1.id, moneda.id, 5)
 
-    #     assert {:error, "3"} ==
-    #              Ledger.Transaction.valor_transaccion("transferencia", %{}, linea, @monedas)
-    #   end
+      {:ok, transaccion} =
+        Transaccion.realizar_transferencia(usuario1.id, usuario2.id, moneda.id, 1)
 
-    #   test "transferencia con cuenta destino inexistente" do
-    #     linea1 = ["2", "1756751404", "USDT", "", "100.0", "userA", "", "alta_cuenta"]
-    #     linea2 = ["3", "1756751405", "USDT", "USDT", "50.0", "userA", "userB", "transferencia"]
-    #     {:ok, cuentas} = Ledger.Transaction.valor_transaccion("alta_cuenta", %{}, linea1, @monedas)
+      assert {transaccion.tipo, transaccion.cuenta_origen_id, transaccion.cuenta_destino_id,
+              transaccion.moneda_origen_id,
+              transaccion.monto} == {"transferencia", usuario1.id, usuario2.id, moneda.id, 1}
+    end
 
-    #     assert {:error, "3"} ==
-    #              Ledger.Transaction.valor_transaccion("transferencia", cuentas, linea2, @monedas)
-    #   end
+    test "realizar_transferencia con usuarios inexistentes" do
+      {:ok, usuario} = Usuario.crear_usuario("userA", "1990-05-06")
+      {:ok, moneda} = Moneda.crear_moneda("EUR", "1.18")
+      {:ok, _} = Transaccion.alta_cuenta(usuario.id, moneda.id, 5)
 
-    #   test "transferencia con moneda inválida" do
-    #     linea1 = ["1", "1756751403", "USDT", "", "100.0", "userA", "", "alta_cuenta"]
-    #     linea2 = ["2", "1756751404", "USDT", "", "100.0", "userB", "", "alta_cuenta"]
-    #     linea3 = ["3", "1756751405", "VERDES", "USDT", "50.0", "userA", "userB", "transferencia"]
-    #     linea4 = ["4", "1756751406", "USDT", "VERDES", "50.0", "userA", "userB", "transferencia"]
-    #     {:ok, cuentas} = Ledger.Transaction.valor_transaccion("alta_cuenta", %{}, linea1, @monedas)
+      assert {:error, "Usuario no encontrado"} ==
+               Transaccion.realizar_transferencia(usuario.id + 1, usuario.id, moneda.id, 1)
 
-    #     {:ok, cuentas} =
-    #       Ledger.Transaction.valor_transaccion("alta_cuenta", cuentas, linea2, @monedas)
+      assert {:error, "Usuario no encontrado"} ==
+               Transaccion.realizar_transferencia(usuario.id, usuario.id + 1, moneda.id, 1)
+    end
 
-    #     assert {:error, "3"} ==
-    #              Ledger.Transaction.valor_transaccion("transferencia", cuentas, linea3, @monedas)
+    test "realizar_transferencia con moneda inexistente" do
+      {:ok, usuario1} = Usuario.crear_usuario("userA", "1990-05-06")
+      {:ok, usuario2} = Usuario.crear_usuario("userB", "1990-05-07")
+      {:ok, moneda} = Moneda.crear_moneda("EUR", "1.18")
+      {:ok, _} = Transaccion.alta_cuenta(usuario1.id, moneda.id, 5)
+      {:ok, _} = Transaccion.alta_cuenta(usuario2.id, moneda.id, 5)
 
-    #     assert {:error, "4"} ==
-    #              Ledger.Transaction.valor_transaccion("transferencia", cuentas, linea4, @monedas)
-    #   end
+      assert {:error, "Moneda no encontrada"} ==
+               Transaccion.realizar_transferencia(usuario1.id, usuario2.id, moneda.id + 1, 1)
+    end
+
+    test "realizar_transferencia con monto inválido" do
+      {:ok, usuario1} = Usuario.crear_usuario("userA", "1990-05-06")
+      {:ok, usuario2} = Usuario.crear_usuario("userB", "1990-05-07")
+      {:ok, moneda} = Moneda.crear_moneda("EUR", "1.18")
+      {:ok, _} = Transaccion.alta_cuenta(usuario1.id, moneda.id, 5)
+      {:ok, _} = Transaccion.alta_cuenta(usuario2.id, moneda.id, 5)
+
+      assert {:error, "El monto debe ser un número positivo"} ==
+               Transaccion.realizar_transferencia(usuario1.id, usuario2.id, moneda.id, 0)
+
+      assert {:error, "El monto debe ser un número positivo"} ==
+               Transaccion.realizar_transferencia(usuario1.id, usuario2.id, moneda.id, -1)
+    end
 
     #   test "transferencia con monto inválido" do
     #     linea1 = ["1", "1756751403", "USDT", "", "100.0", "userA", "", "alta_cuenta"]

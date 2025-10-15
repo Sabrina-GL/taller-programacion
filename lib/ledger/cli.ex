@@ -79,14 +79,18 @@ defmodule Ledger.CLI do
   end
 
   defp efectuar_comando("transacciones", flags) do
-    Ledger.Transaccion.listar_transacciones(flags)
+    with {:ok, c1} <- parsear_id(flags, "c1"),
+         {:ok, c2} <- parsear_id(flags, "c2") do
+      Ledger.Transaccion.listar_transacciones(c1, c2, Map.get(flags, "o", "stdout"))
+    end
   end
 
   defp efectuar_comando("balance", flags) do
-    c1 = parsear_flag(flags, "c1")
-    m = parsear_flag(flags, "m")
-    o = Map.get(flags, "o", "stdout")
-    Ledger.Transaccion.listar_balance(c1, m, o)
+    with {:ok, c1} <- parsear_id(flags, "c1"),
+         {:ok, m} <- parsear_monto(flags, "m") do
+      o = Map.get(flags, "o", "stdout")
+      Ledger.Transaccion.listar_balance(c1, m, o)
+    end
   end
 
   defp efectuar_comando("crear_usuario", flags) do
@@ -97,94 +101,74 @@ defmodule Ledger.CLI do
   end
 
   defp efectuar_comando("editar_usuario", flags) do
-    with {:ok, id} <- parsear_flag(Map.get(flags, "id", "")) do
+    with {:ok, id} <- parsear_id(flags, "id") do
       Ledger.Usuario.editar_usuario(
         id,
         Map.get(flags, "n", "")
       )
     end
-
-    # case parsear_flag(flags, "id", "") do
-    #   {:error, razon} ->
-    #     {:error, razon}
-
-    #   {:ok, id} ->
-    #     Ledger.Usuario.editar_usuario(
-    #       id,
-    #       Map.get(flags, "n", "")
-    #     )
-    # end
   end
 
   defp efectuar_comando("borrar_usuario", flags) do
-    with {:ok, id} <- parsear_flag(Map.get(flags, "id", "")) do
+    with {:ok, id} <- parsear_id(flags, "id") do
       Ledger.Usuario.borrar_usuario(id)
     end
   end
 
   defp efectuar_comando("ver_usuario", flags) do
-    with {:ok, id} <- parsear_flag(Map.get(flags, "id", "")) do
+    with {:ok, id} <- parsear_id(flags, "id") do
       Ledger.Usuario.ver_usuario(id, Map.get(flags, "o", "stdout"))
     end
   end
 
   defp efectuar_comando("crear_moneda", flags) do
-    Ledger.Moneda.crear_moneda(
-      Map.get(flags, "n", ""),
-      Map.get(flags, "p", "")
-    )
+    with {:ok, p} = parsear_monto(flags, "p") do
+      Ledger.Moneda.crear_moneda(Map.get(flags, "n", ""), p)
+    end
   end
 
   defp efectuar_comando("editar_moneda", flags) do
-    with {:ok, id} <- parsear_flag(Map.get(flags, "id", "")),
-         {:ok, precio} <- parsear_flag(Map.get(flags, "id", ""), "Precio") do
-      Ledger.Moneda.editar_moneda(
-        id,
-        precio
-      )
+    with {:ok, id} <- parsear_id(flags, "id"),
+         {:ok, p} <- parsear_monto(flags, "p") do
+      Ledger.Moneda.editar_moneda(id, p)
     end
   end
 
   defp efectuar_comando("borrar_moneda", flags) do
-    with {:ok, id} <- parsear_flag(Map.get(flags, "id", "")) do
+    with {:ok, id} <- parsear_id(flags, "id") do
       Ledger.Moneda.borrar_moneda(id)
     end
   end
 
   defp efectuar_comando("ver_moneda", flags) do
-    with {:ok, id} <- parsear_flag(Map.get(flags, "id", "")) do
+    with {:ok, id} <- parsear_id(flags, "id") do
       Ledger.Moneda.ver_moneda(id, Map.get(flags, "o", "stdout"))
     end
   end
 
   defp efectuar_comando("alta_cuenta", flags) do
-    with {:ok, usuario_id} <- parsear_flag(Map.get(flags, "u", "")),
-         {:ok, moneda_id} <- parsear_flag(Map.get(flags, "m", "")),
-         {:ok, monto} <- parsear_flag(Map.get(flags, "a", ""), "Monto") do
-      Ledger.Transaccion.alta_cuenta(usuario_id, moneda_id, monto)
+    with {:ok, u} <- parsear_id(flags, "u"),
+         {:ok, m} <- parsear_id(flags, "m"),
+         {:ok, a} <- parsear_monto(flags, "a") do
+      Ledger.Transaccion.alta_cuenta(u, m, a)
     end
   end
 
   defp efectuar_comando("realizar_transferencia", flags) do
-    with {:ok, cuenta_origen} <- parsear_flag(Map.get(flags, "o", "")),
-         {:ok, cuenta_destino} <- parsear_flag(Map.get(flags, "d", "")),
-         {:ok, moneda} <- parsear_flag(Map.get(flags, "m", "")),
-         {:ok, monto} <- parsear_flag(Map.get(flags, "a", ""), "Monto") do
-      Ledger.Transaccion.realizar_transferencia(
-        cuenta_origen,
-        cuenta_destino,
-        moneda,
-        monto
-      )
+    with {:ok, o} <- parsear_id(flags, "o"),
+         {:ok, d} <- parsear_id(flags, "d"),
+         {:ok, m} <- parsear_id(flags, "m"),
+         {:ok, a} <- parsear_monto(flags, "a") do
+      Ledger.Transaccion.realizar_transferencia(o, d, m, a)
     end
   end
 
   defp efectuar_comando("realizar_swap", flags) do
-    with {:ok, cuenta} <- parsear_flag(Map.get(flags, "u", "")),
-         {:ok, moneda_origen} <- parsear_flag(Map.get(flags, "mo", "")),
-         {:ok, moneda_destino} <- parsear_flag(Map.get(flags, "md", "")),
-         {:ok, monto} <- parsear_flag(Map.get(flags, "a", ""), "Monto") do
-      Ledger.Transaccion.realizar_swap(cuenta, moneda_origen, moneda_destino, monto)
+    with {:ok, u} <- parsear_id(flags, "u"),
+         {:ok, mo} <- parsear_id(flags, "mo"),
+         {:ok, md} <- parsear_id(flags, "md"),
+         {:ok, a} <- parsear_monto(flags, "a") do
+      Ledger.Transaccion.realizar_swap(u, mo, md, a)
     end
   end
 
@@ -227,19 +211,42 @@ defmodule Ledger.CLI do
   #   end
   # end
 
-  def parsear_flag(valor, tipo \\ "ID") do
-    case valor do
-      valor when is_integer(valor) ->
-        {:ok, valor}
+  def parsear_id(flags, flag) do
+    id = Map.get(flags, flag, "")
 
-      valor when is_binary(valor) ->
-        case Integer.parse(valor) do
-          {valor_int, ""} -> {:ok, valor_int}
-          _ -> {:error, "#{tipo} inválido, debe ser un número"}
+    case id do
+      id when is_integer(id) ->
+        {:ok, id}
+
+      id when is_binary(id) ->
+        case Integer.parse(id) do
+          {id_int, ""} -> {:ok, id_int}
+          _ -> {:error, "ID, debe ser un número"}
         end
 
       _ ->
-        {:error, "#{tipo} inválido, debe ser un número"}
+        {:error, " ID, debe ser un número"}
+    end
+  end
+
+  def parsear_monto(flags, flag) do
+    valor = Map.get(flags, flag, "")
+
+    case valor do
+      valor when is_integer(valor) ->
+        {:ok, valor / 1}
+
+      valor when is_float(valor) ->
+        {:ok, valor}
+
+      valor when is_binary(valor) ->
+        case Float.parse(valor) do
+          {monto_float, ""} -> {:ok, monto_float}
+          _ -> {:error, "Valor inválido, debe ser un número"}
+        end
+
+      _ ->
+        {:error, "Valor inválido, debe ser un número"}
     end
   end
 

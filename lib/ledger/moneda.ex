@@ -1,7 +1,9 @@
 defmodule Ledger.Moneda do
   use Ecto.Schema
   import Ecto.Changeset
-  alias Ledger.{Repo, FileHandler, CLI}
+  import Ecto.Query
+  alias Ledger.Transaccion
+  alias Ledger.{Repo, FileHandler}
 
   schema "monedas" do
     field(:nombre, :string)
@@ -35,36 +37,20 @@ defmodule Ledger.Moneda do
     )
   end
 
-  def existe_moneda?(moneda_id) do
-    case Repo.get(Moneda, String.to_integer(moneda_id)) do
-      nil ->
-        false
-
-      _moneda ->
-        true
-    end
-  end
-
   def crear_moneda(nombre, precio_usd) do
-    case Float.parse(precio_usd) do
-      {precio, ""} when precio > 0 ->
-        changeset =
-          %__MODULE__{}
-          |> changeset_crear(%{
-            nombre: String.upcase(nombre),
-            precio_usd: precio
-          })
+    changeset =
+      %__MODULE__{}
+      |> changeset_crear(%{
+        nombre: String.upcase(nombre),
+        precio_usd: precio_usd
+      })
 
-        case Repo.insert(changeset) do
-          {:ok, moneda} ->
-            {:ok, moneda}
+    case Repo.insert(changeset) do
+      {:ok, moneda} ->
+        {:ok, moneda}
 
-          {:error, _razon} ->
-            {:error, FileHandler.extraer_error(changeset)}
-        end
-
-      _ ->
-        {:error, "El precio debe ser un número positivo"}
+      {:error, _razon} ->
+        {:error, FileHandler.extraer_error(changeset)}
     end
   end
 
@@ -96,17 +82,28 @@ defmodule Ledger.Moneda do
     end
   end
 
-  # TODO: chequear que no este en ninguna transacccion
   def borrar_moneda(id) do
-    case obtener_moneda(id) do
-      {:error, razon} ->
-        {:error, razon}
+    with {:ok, moneda} <- obtener_moneda(id),
+         :ok <- puede_borrarse(id) do
+      case Repo.delete(moneda) do
+        {:ok, _struct} -> {:ok, "Moneda borrada exitosamente"}
+        {:error, razon} -> {:error, razon}
+      end
+    end
+  end
 
-      {:ok, moneda} ->
-        case Repo.delete(moneda) do
-          {:ok, _struct} -> {:ok, "Moneda borrada exitosamente"}
-          {:error, razon} -> {:error, razon}
-        end
+  defp puede_borrarse(id) do
+    transacciones =
+      Repo.all(
+        from(t in Transaccion,
+          where: (t.moneda_origen_id == ^id or t.moneda_destino_id == ^id) and t.tipo != "alta"
+        )
+      )
+
+    if Enum.empty?(transacciones) do
+      :ok
+    else
+      {:error, "La moneda tiene transacciones asociadas"}
     end
   end
 
