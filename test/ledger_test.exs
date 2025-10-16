@@ -1,7 +1,6 @@
 defmodule LedgerTest do
   import ExUnit.CaptureIO
   use ExUnit.Case, async: false
-  # , Repo}
   alias Ledger.{Usuario, FileHandler, Moneda, Transaccion, CLI}
 
   @archivo_tmp Path.join("test_tmp", "archivo_tmp.txt")
@@ -443,6 +442,15 @@ defmodule LedgerTest do
                Transaccion.realizar_transferencia(usuario1.id, usuario2.id, moneda.id + 1, 1)
     end
 
+    test "realizar_transferencia a misma cuenta" do
+      {:ok, usuario1} = Usuario.crear_usuario("userA", "1990-05-06")
+      {:ok, moneda} = Moneda.crear_moneda("EUR", "1.18")
+      {:ok, _} = Transaccion.alta_cuenta(usuario1.id, moneda.id, 5)
+
+      assert {:error, "No se puede realizar una transferencia a la misma cuenta"} ==
+               Transaccion.realizar_transferencia(usuario1.id, usuario1.id, moneda.id, 1)
+    end
+
     test "realizar_transferencia con monto inválido" do
       {:ok, usuario1} = Usuario.crear_usuario("userA", "1990-05-06")
       {:ok, usuario2} = Usuario.crear_usuario("userB", "1990-05-07")
@@ -870,6 +878,18 @@ defmodule LedgerTest do
                 "n" => "Juan",
                 "b" => "1990-05-06"
               }} == CLI.procesar_argumentos(args)
+    end
+
+    test "efectuar_comando válido con flags inválidos" do
+      {:ok, _moneda} = Moneda.crear_moneda("EUR", "1.18")
+      args1 = %{"comando" => "editar_moneda", "id" => "1", "p" => "abc"}
+      args2 = %{"comando" => "editar_moneda", "id" => "abc", "p" => "1.20"}
+
+      assert {:error, "editar_moneda: Valor inválido, debe ser un número"} ==
+               CLI.efectuar_comando(args1)
+
+      assert {:error, "editar_moneda: ID inválido, debe ser un número entero"} ==
+               CLI.efectuar_comando(args2)
     end
 
     test "efectuar_comando con comando crear_usuario" do

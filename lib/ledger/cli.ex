@@ -201,11 +201,11 @@ defmodule Ledger.CLI do
       id when is_binary(id) ->
         case Integer.parse(id) do
           {id_int, ""} -> {:ok, id_int}
-          _ -> {:error, "ID, debe ser un número"}
+          _ -> {:error, "ID inválido, debe ser un número entero"}
         end
 
       _ ->
-        {:error, " ID, debe ser un número"}
+        {:error, "ID inválido, debe ser un número entero"}
     end
   end
 

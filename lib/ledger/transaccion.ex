@@ -26,17 +26,8 @@ defmodule Ledger.Transaccion do
     end
   end
 
-  # TODO no permitir transferencia entre mismo usuario
-
   def realizar_transferencia(cuenta_origen_id, cuenta_destino_id, moneda_id, monto) do
-    with {:ok, _usuario_origen} <- Usuario.obtener_usuario(cuenta_origen_id),
-         {:ok, _usuario_destino} <- Usuario.obtener_usuario(cuenta_destino_id),
-         {:ok, _moneda} <- Moneda.obtener_moneda(moneda_id) do
-      case existe_cuenta?(cuenta_destino_id, moneda_id) do
-        {:error, _} -> alta_cuenta_interna(cuenta_destino_id, moneda_id, 0)
-        :ok -> nil
-      end
-
+    with :ok <- validar_transferencia(cuenta_origen_id, cuenta_destino_id, moneda_id) do
       changeset =
         %__MODULE__{}
         |> changeset_crear(%{
@@ -214,47 +205,50 @@ defmodule Ledger.Transaccion do
 
   defp validar_segun_tipo(changeset, attrs) do
     tipo = get_field(changeset, :tipo)
+    validar_segun_tipo(tipo, changeset, attrs)
+  end
 
-    case tipo do
-      "alta" ->
-        changeset
-        |> validate_number(:monto,
-          greater_than_or_equal_to: 0,
-          message: "El monto debe ser un número positivo"
-        )
-        |> foreign_key_constraint(:cuenta_origen_id)
-        |> foreign_key_constraint(:moneda_origen_id)
-        |> validar_cuenta_no_existe()
+  defp validar_segun_tipo("alta", changeset, _attrs) do
+    changeset
+    |> validate_number(:monto,
+      greater_than_or_equal_to: 0,
+      message: "El monto debe ser un número positivo"
+    )
+    |> foreign_key_constraint(:cuenta_origen_id)
+    |> foreign_key_constraint(:moneda_origen_id)
+    |> validar_cuenta_no_existe()
+  end
 
-      "transferencia" ->
-        changeset
-        |> cast(attrs, [:cuenta_destino_id, :moneda_destino_id])
-        |> validate_required([:cuenta_destino_id, :moneda_destino_id])
-        |> validate_number(:monto,
-          greater_than: 0,
-          message: "El monto debe ser un número positivo"
-        )
-        |> foreign_key_constraint(:cuenta_origen_id)
-        |> foreign_key_constraint(:cuenta_destino_id)
-        |> foreign_key_constraint(:moneda_origen_id)
-        |> foreign_key_constraint(:moneda_destino_id)
-        |> validar_saldo_sufieciente()
+  defp validar_segun_tipo("transferencia", changeset, attrs) do
+    changeset
+    |> cast(attrs, [:cuenta_destino_id, :moneda_destino_id])
+    |> validate_required([:cuenta_destino_id, :moneda_destino_id])
+    |> validate_number(:monto,
+      greater_than: 0,
+      message: "El monto debe ser un número positivo"
+    )
+    |> foreign_key_constraint(:cuenta_origen_id)
+    |> foreign_key_constraint(:cuenta_destino_id)
+    |> foreign_key_constraint(:moneda_origen_id)
+    |> foreign_key_constraint(:moneda_destino_id)
+    |> validar_saldo_sufieciente()
+  end
 
-      "swap" ->
-        changeset
-        |> cast(attrs, [:moneda_destino_id])
-        |> validate_number(:monto,
-          greater_than: 0,
-          message: "El monto debe ser un número positivo"
-        )
-        |> foreign_key_constraint(:cuenta_origen_id)
-        |> foreign_key_constraint(:moneda_origen_id)
-        |> foreign_key_constraint(:moneda_destino_id)
-        |> validar_saldo_sufieciente()
+  defp validar_segun_tipo("swap", changeset, attrs) do
+    changeset
+    |> cast(attrs, [:moneda_destino_id])
+    |> validate_number(:monto,
+      greater_than: 0,
+      message: "El monto debe ser un número positivo"
+    )
+    |> foreign_key_constraint(:cuenta_origen_id)
+    |> foreign_key_constraint(:moneda_origen_id)
+    |> foreign_key_constraint(:moneda_destino_id)
+    |> validar_saldo_sufieciente()
+  end
 
-      _ ->
-        add_error(changeset, :tipo, "Tipo de transacción inválido")
-    end
+  defp validar_segun_tipo(_, changeset, _attrs) do
+    add_error(changeset, :tipo, "Tipo de transacción inválido")
   end
 
   defp validar_cuenta_no_existe(changeset) do
@@ -279,6 +273,24 @@ defmodule Ledger.Transaccion do
       add_error(changeset, :monto, "Saldo insuficiente")
     else
       changeset
+    end
+  end
+
+  defp validar_transferencia(cuenta_origen_id, cuenta_destino_id, moneda_id) do
+    with {:ok, _usuario_origen} <- Usuario.obtener_usuario(cuenta_origen_id),
+         {:ok, _usuario_destino} <- Usuario.obtener_usuario(cuenta_destino_id),
+         {:ok, _moneda} <- Moneda.obtener_moneda(moneda_id),
+         :ok <- existe_cuenta?(cuenta_origen_id, moneda_id) do
+      if cuenta_origen_id == cuenta_destino_id do
+        {:error, "No se puede realizar una transferencia a la misma cuenta"}
+      else
+        case existe_cuenta?(cuenta_destino_id, moneda_id) do
+          {:error, _} -> alta_cuenta_interna(cuenta_destino_id, moneda_id, 0)
+          :ok -> nil
+        end
+
+        :ok
+      end
     end
   end
 
