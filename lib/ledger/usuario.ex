@@ -9,6 +9,82 @@ defmodule Ledger.Usuario do
     timestamps()
   end
 
+  def crear_usuario(nombre, fecha_nacimiento) do
+    case Date.from_iso8601(fecha_nacimiento) do
+      {:ok, fecha} ->
+        changeset =
+          %__MODULE__{}
+          |> crear_changeset(%{
+            nombre: nombre,
+            fecha_nacimiento: fecha
+          })
+
+        case Repo.insert(changeset) do
+          {:ok, usuario} ->
+            {:ok, usuario}
+
+          {:error, _razon} ->
+            {:error, FileHandler.extraer_error(changeset)}
+        end
+
+      {:error, _} ->
+        {:error, "Fecha de nacimiento inválida. Formato esperado: AAAA-MM-DD"}
+    end
+  end
+
+  def obtener_usuario(id) do
+    case Repo.get(Ledger.Usuario, id) do
+      nil -> {:error, "Usuario no encontrado"}
+      usuario -> {:ok, usuario}
+    end
+  end
+
+  def editar_usuario(id, nuevo_nombre) do
+    case obtener_usuario(id) do
+      {:error, razon} ->
+        {:error, razon}
+
+      {:ok, usuario} ->
+        if nuevo_nombre == "" do
+          {:error, "El nombre es obligatorio"}
+        else
+          changeset =
+            usuario
+            |> editar_changeset(%{
+              nombre: nuevo_nombre
+            })
+
+          case Repo.update(changeset) do
+            {:ok, usuario} ->
+              {:ok, usuario}
+
+            {:error, _razon} ->
+              {:error, FileHandler.extraer_error(changeset)}
+          end
+        end
+    end
+  end
+
+  def borrar_usuario(id) do
+    with {:ok, usuario} <- obtener_usuario(id),
+         :ok <- puede_borrarse(id) do
+      case Repo.delete(usuario) do
+        {:ok, _struct} -> {:ok, "Usuario borrado exitosamente"}
+        {:error, razon} -> {:error, razon}
+      end
+    end
+  end
+
+  def ver_usuario(id, archivo) do
+    case obtener_usuario(id) do
+      {:error, razon} ->
+        {:error, razon}
+
+      {:ok, usuario} ->
+        {:ok, FileHandler.mostrar_usuario(usuario, archivo)}
+    end
+  end
+
   defp crear_changeset(usuario, attrs) do
     usuario
     |> cast(attrs, [:nombre, :fecha_nacimiento])
@@ -52,65 +128,6 @@ defmodule Ledger.Usuario do
     end
   end
 
-  def crear_usuario(nombre, fecha_nacimiento) do
-    case Date.from_iso8601(fecha_nacimiento) do
-      {:ok, fecha} ->
-        changeset =
-          %__MODULE__{}
-          |> crear_changeset(%{
-            nombre: nombre,
-            fecha_nacimiento: fecha
-          })
-
-        case Repo.insert(changeset) do
-          {:ok, usuario} ->
-            {:ok, usuario}
-
-          {:error, _razon} ->
-            {:error, FileHandler.extraer_error(changeset)}
-        end
-
-      {:error, _} ->
-        {:error, "Fecha de nacimiento inválida. Formato esperado: AAAA-MM-DD"}
-    end
-  end
-
-  def editar_usuario(id, nuevo_nombre) do
-    case obtener_usuario(id) do
-      {:error, razon} ->
-        {:error, razon}
-
-      {:ok, usuario} ->
-        if nuevo_nombre == "" do
-          {:error, "El nombre es obligatorio"}
-        else
-          changeset =
-            usuario
-            |> editar_changeset(%{
-              nombre: nuevo_nombre
-            })
-
-          case Repo.update(changeset) do
-            {:ok, usuario} ->
-              {:ok, usuario}
-
-            {:error, _razon} ->
-              {:error, FileHandler.extraer_error(changeset)}
-          end
-        end
-    end
-  end
-
-  def borrar_usuario(id) do
-    with {:ok, usuario} <- obtener_usuario(id),
-         :ok <- puede_borrarse(id) do
-      case Repo.delete(usuario) do
-        {:ok, _struct} -> {:ok, "Usuario borrado exitosamente"}
-        {:error, razon} -> {:error, razon}
-      end
-    end
-  end
-
   defp puede_borrarse(id) do
     with {:ok, transacciones_salientes} <- Transaccion.obtener_transacciones(id, ""),
          {:ok, transacciones_entrantes} <- Transaccion.obtener_transacciones("", id) do
@@ -122,23 +139,6 @@ defmodule Ledger.Usuario do
       else
         {:error, "El usuario tiene transacciones asociadas"}
       end
-    end
-  end
-
-  def ver_usuario(id, archivo) do
-    case obtener_usuario(id) do
-      {:error, razon} ->
-        {:error, razon}
-
-      {:ok, usuario} ->
-        {:ok, FileHandler.mostrar_usuario(usuario, archivo)}
-    end
-  end
-
-  def obtener_usuario(id) do
-    case Repo.get(Ledger.Usuario, id) do
-      nil -> {:error, "Usuario no encontrado"}
-      usuario -> {:ok, usuario}
     end
   end
 end

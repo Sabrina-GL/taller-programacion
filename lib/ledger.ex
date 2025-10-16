@@ -5,6 +5,8 @@ defmodule Ledger do
   Sistema de libro contable para gestionar transacciones entre usuarios con soporte para múltiples monedas y conversiones.
   """
 
+  alias Ledger.{CLI, FileHandler}
+
   @doc """
   Función principal de entrada para la línea de comandos.
 
@@ -30,15 +32,15 @@ defmodule Ledger do
   end
 
   def procesar_comandos(args) do
-    case Ledger.CLI.procesar_argumentos(args) do
+    case CLI.procesar_argumentos(args) do
       {:error, razon} ->
-        Ledger.FileHandler.mostrar_error(razon)
+        FileHandler.mostrar_error(razon)
         {:error, razon}
 
       {:ok, flags} ->
-        case Ledger.CLI.efectuar_comando(flags) do
+        case CLI.efectuar_comando(flags) do
           {:error, razon} ->
-            Ledger.FileHandler.mostrar_error(razon)
+            FileHandler.mostrar_error(razon)
             {:error, razon}
 
           resultado ->

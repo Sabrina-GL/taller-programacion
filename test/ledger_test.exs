@@ -95,13 +95,13 @@ defmodule LedgerTest do
     end
 
     test "ver_usuario con usuario inexistente" do
-      assert {:error, "Usuario no encontrado"} == Usuario.ver_usuario(1, "stdout")
+      assert {:error, "Usuario no encontrado"} == Usuario.ver_usuario(1, @archivo_tmp)
     end
 
     test "borrar_usuario borra usuario válido" do
       {:ok, usuario} = Usuario.crear_usuario("userA", "1990-05-06")
       assert {:ok, "Usuario borrado exitosamente"} == Usuario.borrar_usuario(usuario.id)
-      assert {:error, "Usuario no encontrado"} == Usuario.ver_usuario(usuario.id, "stdout")
+      assert {:error, "Usuario no encontrado"} == Usuario.ver_usuario(usuario.id, @archivo_tmp)
     end
 
     test "borrar_usuario con usuario inexistente" do
@@ -206,13 +206,13 @@ defmodule LedgerTest do
     end
 
     test "ver_moneda con moneda inexistente" do
-      assert {:error, "Moneda no encontrada"} == Moneda.ver_moneda(1, "stdout")
+      assert {:error, "Moneda no encontrada"} == Moneda.ver_moneda(1, @archivo_tmp)
     end
 
     test "borrar_moneda borra moneda válida" do
       {:ok, moneda} = Moneda.crear_moneda("EUR", "1.18")
       assert {:ok, "Moneda borrada exitosamente"} == Moneda.borrar_moneda(moneda.id)
-      assert {:error, "Moneda no encontrada"} == Moneda.ver_moneda(moneda.id, "stdout")
+      assert {:error, "Moneda no encontrada"} == Moneda.ver_moneda(moneda.id, @archivo_tmp)
     end
 
     test "borrar_moneda con moneda inexistente" do
@@ -474,7 +474,7 @@ defmodule LedgerTest do
       {:ok, transaccion} = Transaccion.alta_cuenta(usuario.id, moneda.id, 5)
 
       output =
-        ExUnit.CaptureIO.capture_io(fn ->
+        capture_io(fn ->
           Transaccion.ver_transaccion(transaccion.id, "stdout")
         end)
 
@@ -490,7 +490,7 @@ defmodule LedgerTest do
     end
 
     test "ver_transaccion con transaccion inexistente" do
-      assert {:error, "Transaccion no encontrada"} == Transaccion.ver_transaccion(1, "stdout")
+      assert {:error, "Transaccion no encontrada"} == Transaccion.ver_transaccion(1, @archivo_tmp)
     end
 
     test "deshacer_transaccion válido con ambas cuentas existentes deshace swap" do
@@ -744,7 +744,7 @@ defmodule LedgerTest do
 
     test "listar_balance con usuario sin cuentas" do
       {:ok, usuario} = Usuario.crear_usuario("userA", "1990-05-06")
-      {:ok, balance} = Transaccion.listar_balance(usuario.id, "", "stdout")
+      {:ok, balance} = Transaccion.listar_balance(usuario.id, "", @archivo_tmp)
       assert balance == %{}
     end
   end
@@ -847,185 +847,6 @@ defmodule LedgerTest do
     end
   end
 
-  # describe "Tests para Ledger.Balance" do
-  #   test "listar_balance con cuenta inexistente" do
-  #     cuentas = %{
-  #       "userA" => %{"USDT" => 50.0},
-  #       "userB" => %{"USDT" => 150.0}
-  #     }
-
-  #     flags = %{"c1" => "userX"}
-
-  #     assert :error == elem(Ledger.Balance.listar_balance(flags, cuentas, @monedas), 0)
-  #   end
-
-  #   test "listar_balance sin cuenta" do
-  #     cuentas = %{
-  #       "userA" => %{"USDT" => 50.0},
-  #       "userB" => %{"USDT" => 150.0}
-  #     }
-
-  #     flags = %{}
-
-  #     assert :error == elem(Ledger.Balance.listar_balance(flags, cuentas, @monedas), 0)
-  #   end
-
-  #   test "listar_balance con moneda inexistente" do
-  #     cuentas = %{
-  #       "userA" => %{"USDT" => 50.0},
-  #       "userB" => %{"USDT" => 150.0}
-  #     }
-
-  #     flags = %{"c1" => "userA", "m" => "VERDES"}
-  #     assert :error == elem(Ledger.Balance.listar_balance(flags, cuentas, @monedas), 0)
-  #   end
-
-  #   test "listar_balance escribe en archivo una moneda" do
-  #     File.rm_rf!(@archivo_tmp)
-  #     cuentas = %{"userA" => %{"BTC" => 2.0, "USDT" => 100.0}}
-  #     flags = %{"c1" => "userA", "m" => "ARS", "o" => @archivo_tmp}
-  #     esperado = "ARS=91750000.000000\n"
-  #     assert {:ok, 0} == Ledger.Balance.listar_balance(flags, cuentas, @monedas)
-  #     assert File.read!(@archivo_tmp) == esperado
-  #   end
-
-  #   test "listar_balance escribe en stdout una moneda" do
-  #     cuentas = %{"userA" => %{"BTC" => 2.0, "USDT" => 100.0}}
-  #     flags = %{"c1" => "userA", "m" => "ARS"}
-
-  #     esperado = "ARS=91750000.000000\n"
-
-  #     assert capture_io(fn ->
-  #              Ledger.Balance.listar_balance(flags, cuentas, @monedas)
-  #            end) == esperado
-  #   end
-
-  #   test "listar_balance escribe en archivo todas las monedas" do
-  #     File.rm_rf!(@archivo_tmp)
-  #     cuentas = %{"userA" => %{"BTC" => 2.0, "USDT" => 100.0}}
-  #     flags = %{"c1" => "userA", "o" => @archivo_tmp}
-  #     esperado = "BTC=2.000000\nUSDT=100.000000\n"
-  #     assert {:ok, 0} == Ledger.Balance.listar_balance(flags, cuentas, @monedas)
-  #     assert File.read!(@archivo_tmp) == esperado
-  #   end
-
-  #   test "listar_balance escribe en stdout todas las monedas" do
-  #     cuentas = %{"userA" => %{"BTC" => 2.0, "USDT" => 100.0}}
-  #     flags = %{"c1" => "userA"}
-  #     esperado = "BTC=2.000000\nUSDT=100.000000\n"
-
-  #     assert capture_io(fn ->
-  #              Ledger.Balance.listar_balance(flags, cuentas, @monedas)
-  #            end) == esperado
-  #   end
-  # end
-
-  # describe "Tests para Ledger.CLI" do
-  #   test "procesar_argumentos sin comando" do
-  #     assert :error == elem(Ledger.CLI.procesar_argumentos([]), 0)
-  #   end
-
-  #   test "procesar_argumentos con comando inválido" do
-  #     assert :error == elem(Ledger.CLI.procesar_argumentos(["asd"]), 0)
-  #   end
-
-  #   test "procesar_argumentos con argumentos válidos" do
-  #     assert {:ok, %{"comando" => "balance", "c1" => "userA"}} ==
-  #              Ledger.CLI.procesar_argumentos(["balance", "-c1=userA"])
-
-  #     assert {:ok, %{"comando" => "transacciones", "c1" => "userA"}} ==
-  #              Ledger.CLI.procesar_argumentos(["transacciones", "-c1=userA"])
-  #   end
-
-  #   test "efectuar_comando con comando inválido" do
-  #     assert :error == elem(Ledger.CLI.efectuar_comando(%{"comando" => "asd"}, %{}, %{}), 0)
-  #   end
-
-  #   test "efectuar_comando con comando válido" do
-  #     cuentas = %{"userA" => %{"BTC" => 2.0, "USDT" => 100.0}}
-  #     flags_balance = %{"comando" => "balance", "c1" => "userA"}
-  #     flags_transacciones = %{"comando" => "transacciones", "c1" => "userA"}
-  #     assert {:ok, 0} == Ledger.CLI.efectuar_comando(flags_balance, cuentas, @monedas)
-  #     assert {:ok, 0} == Ledger.CLI.efectuar_comando(flags_transacciones, cuentas, @monedas)
-  #   end
-
-  # describe "Tests para Ledger.main" do
-  #   test "main con argumentos inválidos" do
-  #     contenido = "1;1756751403;USDT;;100.0;userA;;alta_cuenta"
-  #     File.write!(@archivo_tmp, contenido)
-
-  #     assert capture_io(fn ->
-  #              Ledger.main([])
-  #            end) == "{:error, No se proporcionó ningún comando}\n"
-
-  #     assert capture_io(fn ->
-  #              Ledger.main(["asd"])
-  #            end) == "{:error, El comando no es válido}\n"
-
-  #     assert capture_io(fn ->
-  #              Ledger.main(["balance", "-t=#{@archivo_tmp}"])
-  #            end) == "{:error, La cuenta no existe}\n"
-  #   end
-
-  #   test "main con comando balance y argumentos válidos" do
-  #     contenido = """
-  #     1;1756751403;USDT;;100.0;userA;;alta_cuenta
-  #     2;1756751404;USDT;;100.0;userB;;alta_cuenta
-  #     3;1756751405;USDT;USDT;50.0;userA;userB;transferencia
-  #     4;1756751406;BTC;;2.0;userC;;alta_cuenta
-  #     5;1756751407;BTC;USDT;1.0;userC;;swap
-  #     """
-
-  #     File.write!(@archivo_tmp, contenido)
-
-  #     esperado = %{
-  #       "userA" => %{"USDT" => 50.0},
-  #       "userB" => %{"USDT" => 150.0},
-  #       "userC" => %{"BTC" => 1.0, "USDT" => 55000.0}
-  #     }
-
-  #     assert {:ok, 0} ==
-  #              Ledger.main([
-  #                "balance",
-  #                "-c1=userA",
-  #                "-m=ARS",
-  #                "-t=#{@archivo_tmp}",
-  #                "-o=stdout"
-  #              ])
-
-  #     assert esperado == Ledger.Transaction.procesar_transacciones(@archivo_tmp, @monedas)
-  #   end
-
-  #   test "main con comando transacciones y argumentos válidos" do
-  #     contenido = """
-  #     1;1756751403;USDT;;100.0;userA;;alta_cuenta
-  #     2;1756751404;USDT;;100.0;userB;;alta_cuenta
-  #     3;1756751405;USDT;USDT;50.0;userA;userB;transferencia
-  #     4;1756751406;BTC;;2.0;userC;;alta_cuenta
-  #     5;1756751407;BTC;USDT;1.0;userC;;swap
-  #     """
-
-  #     File.write!(@archivo_tmp, contenido)
-
-  #     esperado = %{
-  #       "userA" => %{"USDT" => 50.0},
-  #       "userB" => %{"USDT" => 150.0},
-  #       "userC" => %{"BTC" => 1.0, "USDT" => 55000.0}
-  #     }
-
-  #     assert {:ok, 0} ==
-  #              Ledger.main([
-  #                "transacciones",
-  #                "-c1=userA",
-  #                "-t=#{@archivo_tmp}",
-  #                "-o=stdout"
-  #              ])
-
-  #     assert esperado == Ledger.Transaction.procesar_transacciones(@archivo_tmp, @monedas)
-  #   end
-  # end
-
-  # TODO BALANCE Y TRANSACCIONES
   describe "Tests para Ledger.CLI" do
     test "procesar_argumentos sin arguemntos" do
       assert {:error, "No se proporcionó ningún comando"} == CLI.procesar_argumentos([])
@@ -1088,9 +909,9 @@ defmodule LedgerTest do
 
     test "efectuar_comando con ver_usuario" do
       {:ok, usuario} = Usuario.crear_usuario("userA", "1990-05-06")
-      flags_ok = %{"comando" => "ver_usuario", "id" => "#{usuario.id}", "o" => "stdout"}
+      flags_ok = %{"comando" => "ver_usuario", "id" => "#{usuario.id}", "out" => @archivo_tmp}
       {res_ok, _} = CLI.efectuar_comando(flags_ok)
-      flags_err = %{"comando" => "ver_usuario", "id" => "9999", "o" => "stdout"}
+      flags_err = %{"comando" => "ver_usuario", "id" => "9999", "out" => @archivo_tmp}
       {res_err, razon} = CLI.efectuar_comando(flags_err)
 
       assert :ok == res_ok
@@ -1135,9 +956,9 @@ defmodule LedgerTest do
 
     test "efectuar_comando con ver_moneda" do
       {:ok, moneda} = Moneda.crear_moneda("EUR", "1.18")
-      flags_ok = %{"comando" => "ver_moneda", "id" => "#{moneda.id}", "o" => "stdout"}
+      flags_ok = %{"comando" => "ver_moneda", "id" => "#{moneda.id}", "out" => @archivo_tmp}
       {res_ok, _} = CLI.efectuar_comando(flags_ok)
-      flags_err = %{"comando" => "ver_moneda", "id" => "9999", "o" => "stdout"}
+      flags_err = %{"comando" => "ver_moneda", "id" => "9999", "out" => @archivo_tmp}
       {res_err, razon} = CLI.efectuar_comando(flags_err)
 
       assert :ok == res_ok
@@ -1242,7 +1063,7 @@ defmodule LedgerTest do
       flags_ok = %{
         "comando" => "ver_transaccion",
         "id" => "#{transaccion.id}",
-        "o" => "stdout"
+        "out" => @archivo_tmp
       }
 
       {res_ok, _} = CLI.efectuar_comando(flags_ok)
@@ -1250,7 +1071,7 @@ defmodule LedgerTest do
       flags_err = %{
         "comando" => "ver_transaccion",
         "id" => "9999",
-        "o" => "stdout"
+        "out" => @archivo_tmp
       }
 
       {res_err, razon} = CLI.efectuar_comando(flags_err)
@@ -1283,6 +1104,85 @@ defmodule LedgerTest do
       assert :ok == res_ok
       assert :error == res_err
       assert String.contains?(razon, "deshacer_transaccion")
+    end
+
+    test "efectuar_comando con comando transacciones" do
+      {:ok, usuario1} = Usuario.crear_usuario("userA", "1990-05-06")
+      {:ok, usuario2} = Usuario.crear_usuario("userB", "1990-05-07")
+      {:ok, moneda} = Moneda.crear_moneda("EUR", "1.18")
+      {:ok, _} = Transaccion.alta_cuenta(usuario1.id, moneda.id, 5)
+      {:ok, _} = Transaccion.alta_cuenta(usuario2.id, moneda.id, 5)
+      {:ok, _} = Transaccion.realizar_transferencia(usuario1.id, usuario2.id, moneda.id, 1)
+
+      flags_ok = %{
+        "comando" => "transacciones",
+        "c1" => "#{usuario1.id}",
+        "c2" => "#{usuario2.id}",
+        "out" => @archivo_tmp
+      }
+
+      {res_ok, _} = CLI.efectuar_comando(flags_ok)
+
+      flags_err = %{
+        "comando" => "transacciones",
+        "c1" => "#{usuario1.id}",
+        "c2" => "9999",
+        "out" => @archivo_tmp
+      }
+
+      {res_err, razon} = CLI.efectuar_comando(flags_err)
+      assert :ok == res_ok
+      assert :error == res_err
+      assert String.contains?(razon, "transacciones")
+    end
+
+    test "efectuar_comando con comando balance" do
+      {:ok, usuario} = Usuario.crear_usuario("userA", "1990-05-06")
+      {:ok, moneda1} = Moneda.crear_moneda("EUR", "1.18")
+      {:ok, moneda2} = Moneda.crear_moneda("USDT", "1")
+      {:ok, _} = Transaccion.alta_cuenta(usuario.id, moneda1.id, 5)
+      {:ok, _} = Transaccion.alta_cuenta(usuario.id, moneda2.id, 2)
+      flags_ok = %{"comando" => "balance", "c1" => "#{usuario.id}", "out" => @archivo_tmp}
+      {res_ok, _} = CLI.efectuar_comando(flags_ok)
+      flags_err = %{"comando" => "balance", "c1" => "9999", "out" => @archivo_tmp}
+      {res_err, razon} = CLI.efectuar_comando(flags_err)
+      assert :ok == res_ok
+      assert :error == res_err
+      assert String.contains?(razon, "balance")
+    end
+  end
+
+  describe "Tests para Ledger" do
+    test "procesar_comandos con argumentos vacíos" do
+      capture_io(fn ->
+        assert {:error, "No se proporcionó ningún comando"} == Ledger.procesar_comandos([])
+      end)
+    end
+
+    test "procesar_comandos con comando inválido" do
+      args = ["ruleta", "-c1=2"]
+
+      capture_io(fn ->
+        assert {:error, "ruleta: El comando no es válido"} == Ledger.procesar_comandos(args)
+      end)
+    end
+
+    test "procesar_comandos con comando válido" do
+      args = ["crear_usuario", "-n=Juan", "-b=1990-05-06"]
+      assert :ok == elem(Ledger.procesar_comandos(args), 0)
+    end
+
+    test "procesar_comandos con varios comandos válidos" do
+      args = [
+        "crear_usuario",
+        "-n=Juan",
+        "-b=1990-05-06",
+        "crear_moneda",
+        "-n=EUR",
+        "-p=1.18"
+      ]
+
+      assert :ok == elem(Ledger.procesar_comandos(args), 0)
     end
   end
 end
