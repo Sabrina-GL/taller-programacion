@@ -18,6 +18,7 @@ defmodule Ledger.CLI do
     "alta_cuenta",
     "realizar_transferencia",
     "realizar_swap",
+    "ver_transaccion",
     "deshacer_transaccion"
   ]
 
@@ -82,7 +83,7 @@ defmodule Ledger.CLI do
   defp efectuar_comando("transacciones", flags) do
     with {:ok, c1} <- parsear_id(flags, "c1"),
          {:ok, c2} <- parsear_id(flags, "c2") do
-      Ledger.Transaccion.listar_transacciones(c1, c2, Map.get(flags, "o", "stdout"))
+      Ledger.Transaccion.listar_transacciones(c1, c2, Map.get(flags, "out", "stdout"))
     end
   end
 
@@ -94,7 +95,7 @@ defmodule Ledger.CLI do
         parsear_id(flags, "m")
       end
 
-      o = Map.get(flags, "o", "stdout")
+      o = Map.get(flags, "out", "stdout")
       Ledger.Transaccion.listar_balance(c1, m, o)
     end
   end
@@ -123,7 +124,7 @@ defmodule Ledger.CLI do
 
   defp efectuar_comando("ver_usuario", flags) do
     with {:ok, id} <- parsear_id(flags, "id") do
-      Ledger.Usuario.ver_usuario(id, Map.get(flags, "o", "stdout"))
+      Ledger.Usuario.ver_usuario(id, Map.get(flags, "out", "stdout"))
     end
   end
 
@@ -148,7 +149,7 @@ defmodule Ledger.CLI do
 
   defp efectuar_comando("ver_moneda", flags) do
     with {:ok, id} <- parsear_id(flags, "id") do
-      Ledger.Moneda.ver_moneda(id, Map.get(flags, "o", "stdout"))
+      Ledger.Moneda.ver_moneda(id, Map.get(flags, "out", "stdout"))
     end
   end
 
@@ -175,6 +176,12 @@ defmodule Ledger.CLI do
          {:ok, md} <- parsear_id(flags, "md"),
          {:ok, a} <- parsear_monto(flags, "a") do
       Ledger.Transaccion.realizar_swap(u, mo, md, a)
+    end
+  end
+
+  defp efectuar_comando("ver_transaccion", flags) do
+    with {:ok, id} <- parsear_id(flags, "id") do
+      Ledger.Transaccion.ver_transaccion(id, Map.get(flags, "out", "stdout"))
     end
   end
 

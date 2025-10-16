@@ -36,30 +36,20 @@ defmodule Ledger.Moneda do
   end
 
   def editar_moneda(id, nuevo_precio_usd) do
-    case obtener_moneda(id) do
-      {:error, razon} ->
-        {:error, razon}
+    with {:ok, moneda} <- obtener_moneda(id) do
+      changeset =
+        moneda
+        |> changeset_editar(%{
+          precio_usd: nuevo_precio_usd
+        })
 
-      {:ok, moneda} ->
-        case Float.parse(nuevo_precio_usd) do
-          {precio, ""} when precio > 0 ->
-            changeset =
-              moneda
-              |> changeset_editar(%{
-                precio_usd: precio
-              })
+      case Repo.update(changeset) do
+        {:ok, moneda} ->
+          {:ok, moneda}
 
-            case Repo.update(changeset) do
-              {:ok, moneda} ->
-                {:ok, moneda}
-
-              {:error, razon} ->
-                {:error, razon}
-            end
-
-          _ ->
-            {:error, "El nuevo precio debe ser un número positivo"}
-        end
+        {:error, _} ->
+          {:error, FileHandler.extraer_error(changeset)}
+      end
     end
   end
 
@@ -114,7 +104,7 @@ defmodule Ledger.Moneda do
   defp changeset_editar(moneda, attrs) do
     moneda
     |> cast(attrs, [:precio_usd])
-    |> validate_required([:precio_usd])
+    |> validate_required([:precio_usd], message: "El precio es obligatorio")
     |> unique_constraint(:nombre)
     |> validate_number(:precio_usd,
       greater_than: 0,

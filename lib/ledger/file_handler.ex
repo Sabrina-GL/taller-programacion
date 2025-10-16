@@ -56,6 +56,29 @@ defmodule Ledger.FileHandler do
     informacion
   end
 
+  def mostrar_transaccion(transaccion, archivo) do
+    lineas = [
+      "✦ . ⁺ . ✦ TRANSACCIÓN #{transaccion.id} ✦ . ⁺ . ✦",
+      "Tipo: #{transaccion.tipo}",
+      "Cuenta Origen: #{transaccion.cuenta_origen_id}",
+      if(transaccion.cuenta_destino_id, do: "Cuenta Destino: #{transaccion.cuenta_destino_id}"),
+      "Moneda Origen: #{transaccion.moneda_origen_id}",
+      if(transaccion.moneda_destino_id, do: "Moneda Destino: #{transaccion.moneda_destino_id}"),
+      "Monto: #{:io_lib.format("~.6f", [transaccion.monto]) |> to_string()}",
+      "Creado: #{NaiveDateTime.to_iso8601(transaccion.inserted_at)}",
+      "Modificado: #{NaiveDateTime.to_iso8601(transaccion.updated_at)}"
+    ]
+
+    informacion = lineas |> Enum.filter(& &1) |> Enum.join("\n")
+
+    cond do
+      archivo == "stdout" -> IO.puts(informacion)
+      true -> File.write!(archivo, informacion <> "\n", [:append])
+    end
+
+    informacion
+  end
+
   defp mostrar_linea_balance(moneda, monto, archivo) do
     nombre_moneda = Moneda.obtener_nombre(moneda)
     monto_decimales = :io_lib.format("~.6f", [monto]) |> to_string()

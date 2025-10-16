@@ -15,7 +15,6 @@ defmodule Ledger.Transaccion do
   end
 
   # TODO: agregar precio actual de cada moneda en la transaccion por si se edita
-  # TODO: deshacer_transaccion
 
   def alta_cuenta(usuario, moneda, monto) do
     cond do
@@ -86,6 +85,12 @@ defmodule Ledger.Transaccion do
         {:error, _razon} ->
           {:error, FileHandler.extraer_error(changeset)}
       end
+    end
+  end
+
+  def ver_transaccion(id, archivo) do
+    with {:ok, transaccion} <- obtener_transaccion(id) do
+      {:ok, FileHandler.mostrar_transaccion(transaccion, archivo)}
     end
   end
 
@@ -160,21 +165,10 @@ defmodule Ledger.Transaccion do
     end
   end
 
-  def listar_transacciones(c1, c2, _o) do
+  def listar_transacciones(c1, c2, o) do
     with {:ok, transacciones} <- obtener_transacciones(c1, c2) do
       Enum.each(transacciones, fn t ->
-        IO.puts("""
-        ----------------------------
-        Id: #{t.id}
-        Tipo: #{t.tipo}
-        Monto: #{t.monto}
-        Id cuenta origen: #{t.cuenta_origen_id}
-        Id cuenta destino: #{t.cuenta_destino_id}
-        Id moneda origen: #{t.moneda_origen_id}
-        Id moneda destino: #{t.moneda_destino_id}
-        Fecha: #{t.inserted_at}
-        ----------------------------
-        """)
+        FileHandler.mostrar_transaccion(t, o)
       end)
 
       {:ok, transacciones}
@@ -195,16 +189,16 @@ defmodule Ledger.Transaccion do
         with {:ok, moneda} <- Moneda.obtener_moneda(moneda_id) do
           balance_en_moneda = cambiar_balance_a_moneda(balance_actualizado, moneda.id)
           FileHandler.mostrar_balance(balance_en_moneda, archivo)
+          {:ok, balance_en_moneda}
         end
       else
         FileHandler.mostrar_balance(balance_actualizado, archivo)
+        {:ok, balance_actualizado}
       end
     end
-
-    {:ok, nil}
   end
 
-  def changeset_crear(transaccion, attrs) do
+  defp changeset_crear(transaccion, attrs) do
     transaccion
     |> cast(attrs, [
       :tipo,
@@ -248,6 +242,7 @@ defmodule Ledger.Transaccion do
         |> foreign_key_constraint(:cuenta_destino_id)
         |> foreign_key_constraint(:moneda_origen_id)
         |> foreign_key_constraint(:moneda_destino_id)
+        |> validar_saldo_sufieciente()
 
       "swap" ->
         changeset
@@ -333,9 +328,8 @@ defmodule Ledger.Transaccion do
   defp validar_cuenta(""), do: :ok
 
   defp validar_cuenta(cuenta_id) do
-    case Usuario.obtener_usuario(cuenta_id) do
-      {:ok, _} -> :ok
-      {:error, _} -> {:error, "Se proporcionó una cuenta inexistente"}
+    with {:ok, _} <- Usuario.obtener_usuario(cuenta_id) do
+      :ok
     end
   end
 
@@ -405,5 +399,12 @@ defmodule Ledger.Transaccion do
       end)
 
     %{moneda_id => total}
+  end
+
+  defp obtener_transaccion(id) do
+    case Repo.get(Ledger.Transaccion, id) do
+      nil -> {:error, "Transaccion no encontrada"}
+      transaccion -> {:ok, transaccion}
+    end
   end
 end

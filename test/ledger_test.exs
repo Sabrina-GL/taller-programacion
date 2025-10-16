@@ -2,7 +2,7 @@ defmodule LedgerTest do
   import ExUnit.CaptureIO
   use ExUnit.Case, async: false
   # , Repo}
-  alias Ledger.{Usuario, FileHandler, Moneda, Transaccion}
+  alias Ledger.{Usuario, FileHandler, Moneda, Transaccion, CLI}
 
   @archivo_tmp Path.join("test_tmp", "archivo_tmp.txt")
 
@@ -182,16 +182,13 @@ defmodule LedgerTest do
     test "editar_moneda con precio inválido" do
       {:ok, moneda} = Moneda.crear_moneda("EUR", "1.18")
 
-      assert {:error, "El nuevo precio debe ser un número positivo"} ==
+      assert {:error, "El precio es obligatorio"} ==
                Moneda.editar_moneda(moneda.id, "")
 
-      assert {:error, "El nuevo precio debe ser un número positivo"} ==
+      assert {:error, "El precio debe ser un número positivo"} ==
                Moneda.editar_moneda(moneda.id, "0")
 
-      assert {:error, "El nuevo precio debe ser un número positivo"} ==
-               Moneda.editar_moneda(moneda.id, "asd")
-
-      assert {:error, "El nuevo precio debe ser un número positivo"} ==
+      assert {:error, "El precio debe ser un número positivo"} ==
                Moneda.editar_moneda(moneda.id, "-1")
     end
 
@@ -460,6 +457,42 @@ defmodule LedgerTest do
                Transaccion.realizar_transferencia(usuario1.id, usuario2.id, moneda.id, -1)
     end
 
+    test "realizar_transferencia con saldo insuficiente" do
+      {:ok, usuario1} = Usuario.crear_usuario("userA", "1990-05-06")
+      {:ok, usuario2} = Usuario.crear_usuario("userB", "1990-05-07")
+      {:ok, moneda} = Moneda.crear_moneda("EUR", "1.18")
+      {:ok, _} = Transaccion.alta_cuenta(usuario1.id, moneda.id, 5)
+      {:ok, _} = Transaccion.alta_cuenta(usuario2.id, moneda.id, 5)
+
+      assert {:error, "Saldo insuficiente"} ==
+               Transaccion.realizar_transferencia(usuario1.id, usuario2.id, moneda.id, 10)
+    end
+
+    test "ver_transaccion con transaccion válida" do
+      {:ok, usuario} = Usuario.crear_usuario("userA", "1990-05-06")
+      {:ok, moneda} = Moneda.crear_moneda("EUR", "1.18")
+      {:ok, transaccion} = Transaccion.alta_cuenta(usuario.id, moneda.id, 5)
+
+      output =
+        ExUnit.CaptureIO.capture_io(fn ->
+          Transaccion.ver_transaccion(transaccion.id, "stdout")
+        end)
+
+      assert String.contains?(output, [
+               "TRANSACCIÓN #{transaccion.id}",
+               "alta",
+               "#{transaccion.cuenta_origen_id}",
+               "#{transaccion.moneda_origen_id}",
+               "#{transaccion.monto}",
+               "#{transaccion.inserted_at}",
+               "#{transaccion.updated_at}"
+             ])
+    end
+
+    test "ver_transaccion con transaccion inexistente" do
+      assert {:error, "Transaccion no encontrada"} == Transaccion.ver_transaccion(1, "stdout")
+    end
+
     test "deshacer_transaccion válido con ambas cuentas existentes deshace swap" do
       {:ok, usuario} = Usuario.crear_usuario("userA", "1990-05-06")
       {:ok, moneda1} = Moneda.crear_moneda("EUR", "1.18")
@@ -547,6 +580,172 @@ defmodule LedgerTest do
 
       assert {:error, "No se puede deshacer un alta de cuenta"} ==
                Transaccion.deshacer_transaccion(transaccion.id)
+    end
+
+    test "obtener_transacciones sin filtros" do
+      {:ok, usuario1} = Usuario.crear_usuario("userA", "1990-05-06")
+      {:ok, usuario2} = Usuario.crear_usuario("userB", "1990-05-06")
+      {:ok, moneda1} = Moneda.crear_moneda("EUR", "1.18")
+      {:ok, moneda2} = Moneda.crear_moneda("USDT", "1")
+      {:ok, _} = Transaccion.alta_cuenta(usuario1.id, moneda1.id, 5)
+      {:ok, _} = Transaccion.alta_cuenta(usuario1.id, moneda2.id, 5)
+      {:ok, _} = Transaccion.alta_cuenta(usuario2.id, moneda1.id, 5)
+      {:ok, _} = Transaccion.realizar_swap(usuario1.id, moneda1.id, moneda2.id, 5)
+      {:ok, _} = Transaccion.realizar_transferencia(usuario2.id, usuario1.id, moneda1.id, 1)
+
+      {:ok, transacciones} = Transaccion.obtener_transacciones("", "")
+      assert length(transacciones) == 5
+    end
+
+    test "obtener_transacciones con según cuenta origen" do
+      {:ok, usuario1} = Usuario.crear_usuario("userA", "1990-05-06")
+      {:ok, usuario2} = Usuario.crear_usuario("userB", "1990-05-06")
+      {:ok, moneda1} = Moneda.crear_moneda("EUR", "1.18")
+      {:ok, moneda2} = Moneda.crear_moneda("USDT", "1")
+      {:ok, _} = Transaccion.alta_cuenta(usuario1.id, moneda1.id, 5)
+      {:ok, _} = Transaccion.alta_cuenta(usuario1.id, moneda2.id, 5)
+      {:ok, _} = Transaccion.alta_cuenta(usuario2.id, moneda1.id, 5)
+      {:ok, _} = Transaccion.realizar_swap(usuario1.id, moneda1.id, moneda2.id, 5)
+
+      {:ok, transacciones} = Transaccion.obtener_transacciones(usuario1.id, "")
+      assert length(transacciones) == 3
+    end
+
+    test "obtener_transacciones con según cuenta destino" do
+      {:ok, usuario1} = Usuario.crear_usuario("userA", "1990-05-06")
+      {:ok, usuario2} = Usuario.crear_usuario("userB", "1990-05-06")
+      {:ok, moneda1} = Moneda.crear_moneda("EUR", "1.18")
+      {:ok, _} = Transaccion.alta_cuenta(usuario1.id, moneda1.id, 5)
+      {:ok, _} = Transaccion.alta_cuenta(usuario2.id, moneda1.id, 5)
+      {:ok, _} = Transaccion.realizar_transferencia(usuario1.id, usuario2.id, moneda1.id, 1)
+
+      {:ok, transacciones} = Transaccion.obtener_transacciones("", usuario2.id)
+      assert length(transacciones) == 1
+    end
+
+    test "obtener_transacciones con según cuenta origen y destino" do
+      {:ok, usuario1} = Usuario.crear_usuario("userA", "1990-05-06")
+      {:ok, usuario2} = Usuario.crear_usuario("userB", "1990-05-06")
+      {:ok, moneda1} = Moneda.crear_moneda("EUR", "1.18")
+      {:ok, _} = Transaccion.alta_cuenta(usuario1.id, moneda1.id, 5)
+      {:ok, _} = Transaccion.alta_cuenta(usuario2.id, moneda1.id, 5)
+      {:ok, _} = Transaccion.realizar_transferencia(usuario1.id, usuario2.id, moneda1.id, 1)
+      {:ok, _} = Transaccion.realizar_transferencia(usuario2.id, usuario1.id, moneda1.id, 1)
+
+      {:ok, transacciones} = Transaccion.obtener_transacciones(usuario1.id, usuario2.id)
+      assert length(transacciones) == 1
+    end
+
+    test "obtener_transacciones con usuarios inexistentes" do
+      {:ok, usuario} = Usuario.crear_usuario("userA", "1990-05-06")
+
+      assert {:error, "Usuario no encontrado"} ==
+               Transaccion.obtener_transacciones(usuario.id + 1, "")
+
+      assert {:error, "Usuario no encontrado"} ==
+               Transaccion.obtener_transacciones("", usuario.id + 1)
+
+      assert {:error, "Usuario no encontrado"} ==
+               Transaccion.obtener_transacciones(usuario.id + 1, usuario.id + 1)
+    end
+
+    test "listar_transacciones muestra transacciones en stdout" do
+      {:ok, usuario1} = Usuario.crear_usuario("userA", "1990-05-06")
+      {:ok, usuario2} = Usuario.crear_usuario("userB", "1990-05-06")
+      {:ok, moneda1} = Moneda.crear_moneda("EUR", "1.18")
+      {:ok, moneda2} = Moneda.crear_moneda("USDT", "1")
+      {:ok, _} = Transaccion.alta_cuenta(usuario1.id, moneda1.id, 5)
+      {:ok, _} = Transaccion.alta_cuenta(usuario1.id, moneda2.id, 5)
+      {:ok, _} = Transaccion.alta_cuenta(usuario2.id, moneda1.id, 5)
+      {:ok, _} = Transaccion.realizar_swap(usuario1.id, moneda1.id, moneda2.id, 5)
+      {:ok, _} = Transaccion.realizar_transferencia(usuario2.id, usuario1.id, moneda1.id, 1)
+
+      output =
+        capture_io(fn ->
+          {:ok, transacciones} = Transaccion.listar_transacciones(usuario1.id, "", "stdout")
+          assert length(transacciones) == 3
+        end)
+
+      assert String.contains?(output, "TRANSACCIÓN")
+      assert String.contains?(output, "alta")
+      assert String.contains?(output, "swap")
+    end
+
+    test "listar_transacciones muestra transacciones en archivo" do
+      {:ok, usuario1} = Usuario.crear_usuario("userA", "1990-05-06")
+      {:ok, usuario2} = Usuario.crear_usuario("userB", "1990-05-06")
+      {:ok, moneda1} = Moneda.crear_moneda("EUR", "1.18")
+      {:ok, moneda2} = Moneda.crear_moneda("USDT", "1")
+      {:ok, _} = Transaccion.alta_cuenta(usuario1.id, moneda1.id, 5)
+      {:ok, _} = Transaccion.alta_cuenta(usuario1.id, moneda2.id, 5)
+      {:ok, _} = Transaccion.alta_cuenta(usuario2.id, moneda1.id, 5)
+      {:ok, _} = Transaccion.realizar_swap(usuario1.id, moneda1.id, moneda2.id, 5)
+      {:ok, _} = Transaccion.realizar_transferencia(usuario2.id, usuario1.id, moneda1.id, 1)
+
+      {:ok, transacciones} = Transaccion.listar_transacciones(usuario1.id, "", @archivo_tmp)
+      assert length(transacciones) == 3
+      contenido = File.read!(@archivo_tmp)
+      assert String.contains?(contenido, "TRANSACCIÓN")
+      assert String.contains?(contenido, "alta")
+      assert String.contains?(contenido, "swap")
+    end
+
+    test "listar_balance en stdout" do
+      {:ok, usuario} = Usuario.crear_usuario("userA", "1990-05-06")
+      {:ok, moneda1} = Moneda.crear_moneda("EUR", "1.18")
+      {:ok, moneda2} = Moneda.crear_moneda("USDT", "1")
+      {:ok, _} = Transaccion.alta_cuenta(usuario.id, moneda1.id, 5)
+      {:ok, _} = Transaccion.alta_cuenta(usuario.id, moneda2.id, 2)
+
+      output =
+        capture_io(fn ->
+          {:ok, balance} = Transaccion.listar_balance(usuario.id, "", "stdout")
+          assert balance == %{moneda1.id => 5.0, moneda2.id => 2.0}
+        end)
+
+      assert String.contains?(output, "EUR=5.000000")
+      assert String.contains?(output, "USDT=2.000000")
+    end
+
+    test "listar_balance en archivo" do
+      {:ok, usuario} = Usuario.crear_usuario("userA", "1990-05-06")
+      {:ok, moneda1} = Moneda.crear_moneda("EUR", "1.18")
+      {:ok, moneda2} = Moneda.crear_moneda("USDT", "1")
+      {:ok, _} = Transaccion.alta_cuenta(usuario.id, moneda1.id, 5)
+      {:ok, _} = Transaccion.alta_cuenta(usuario.id, moneda2.id, 2)
+
+      {:ok, balance} = Transaccion.listar_balance(usuario.id, "", @archivo_tmp)
+      assert balance == %{moneda1.id => 5.0, moneda2.id => 2.0}
+      contenido = File.read!(@archivo_tmp)
+
+      assert String.contains?(contenido, "EUR=5.000000")
+      assert String.contains?(contenido, "USDT=2.000000")
+    end
+
+    test "listar_balance con total en una moneda" do
+      {:ok, usuario} = Usuario.crear_usuario("userA", "1990-05-06")
+      {:ok, moneda1} = Moneda.crear_moneda("EUR", "1.18")
+      {:ok, moneda2} = Moneda.crear_moneda("USDT", "1")
+      {:ok, _} = Transaccion.alta_cuenta(usuario.id, moneda1.id, 1)
+      {:ok, _} = Transaccion.alta_cuenta(usuario.id, moneda2.id, 1)
+
+      output =
+        capture_io(fn ->
+          {:ok, balance} = Transaccion.listar_balance(usuario.id, moneda2.id, "stdout")
+          assert 2.18 == Float.round(balance[moneda2.id], 2)
+        end)
+
+      assert String.contains?(output, "USDT=2.180000")
+    end
+
+    test "listar_balance con usuario inexistente" do
+      assert {:error, "Usuario no encontrado"} == Transaccion.listar_balance(1, "", "stdout")
+    end
+
+    test "listar_balance con usuario sin cuentas" do
+      {:ok, usuario} = Usuario.crear_usuario("userA", "1990-05-06")
+      {:ok, balance} = Transaccion.listar_balance(usuario.id, "", "stdout")
+      assert balance == %{}
     end
   end
 
@@ -825,4 +1024,265 @@ defmodule LedgerTest do
   #     assert esperado == Ledger.Transaction.procesar_transacciones(@archivo_tmp, @monedas)
   #   end
   # end
+
+  # TODO BALANCE Y TRANSACCIONES
+  describe "Tests para Ledger.CLI" do
+    test "procesar_argumentos sin arguemntos" do
+      assert {:error, "No se proporcionó ningún comando"} == CLI.procesar_argumentos([])
+    end
+
+    test "procesar_argumentos con comando inválido" do
+      args = ["ruleta", "-c1=2"]
+      assert {:error, "ruleta: El comando no es válido"} == CLI.procesar_argumentos(args)
+    end
+
+    test "comando válido sin flags" do
+      assert {:ok, %{"comando" => "crear_usuario"}} == CLI.procesar_argumentos(["crear_usuario"])
+    end
+
+    test "comando válido con flags" do
+      args = ["crear_usuario", "-n=Juan", "-b=1990-05-06"]
+
+      assert {:ok,
+              %{
+                "comando" => "crear_usuario",
+                "n" => "Juan",
+                "b" => "1990-05-06"
+              }} == CLI.procesar_argumentos(args)
+    end
+
+    test "efectuar_comando con comando crear_usuario" do
+      flags_ok = %{"comando" => "crear_usuario", "n" => "Juan", "b" => "1990-05-06"}
+      {res_ok, _} = CLI.efectuar_comando(flags_ok)
+      flags_err = %{"comando" => "crear_usuario", "n" => "", "b" => "1990-05-06"}
+      {res_err, razon} = CLI.efectuar_comando(flags_err)
+
+      assert :ok == res_ok
+      assert :error == res_err
+      assert String.contains?(razon, "crear_usuario")
+    end
+
+    test "efectuar_comando con comando editar_usuario" do
+      {:ok, usuario} = Usuario.crear_usuario("userA", "1990-05-06")
+      flags_ok = %{"comando" => "editar_usuario", "id" => "#{usuario.id}", "n" => "Pedro"}
+      {res_ok, _} = CLI.efectuar_comando(flags_ok)
+      flags_err = %{"comando" => "editar_usuario", "id" => "9999", "n" => "Pedro"}
+      {res_err, razon} = CLI.efectuar_comando(flags_err)
+
+      assert :ok == res_ok
+      assert :error == res_err
+      assert String.contains?(razon, "editar_usuario")
+    end
+
+    test "efectuar_comando con comando borrar_usuario" do
+      {:ok, usuario} = Usuario.crear_usuario("userA", "1990-05-06")
+      flags_ok = %{"comando" => "borrar_usuario", "id" => "#{usuario.id}"}
+      {res_ok, _} = CLI.efectuar_comando(flags_ok)
+      flags_err = %{"comando" => "borrar_usuario", "id" => "9999"}
+      {res_err, razon} = CLI.efectuar_comando(flags_err)
+
+      assert :ok == res_ok
+      assert :error == res_err
+      assert String.contains?(razon, "borrar_usuario")
+    end
+
+    test "efectuar_comando con ver_usuario" do
+      {:ok, usuario} = Usuario.crear_usuario("userA", "1990-05-06")
+      flags_ok = %{"comando" => "ver_usuario", "id" => "#{usuario.id}", "o" => "stdout"}
+      {res_ok, _} = CLI.efectuar_comando(flags_ok)
+      flags_err = %{"comando" => "ver_usuario", "id" => "9999", "o" => "stdout"}
+      {res_err, razon} = CLI.efectuar_comando(flags_err)
+
+      assert :ok == res_ok
+      assert :error == res_err
+      assert String.contains?(razon, "ver_usuario")
+    end
+
+    test "efectuar_comando con comando crear_moneda" do
+      flags_ok = %{"comando" => "crear_moneda", "n" => "EUR", "p" => "1.18"}
+      {res_ok, _} = CLI.efectuar_comando(flags_ok)
+      flags_err = %{"comando" => "crear_moneda", "n" => "", "p" => "1.18"}
+      {res_err, razon} = CLI.efectuar_comando(flags_err)
+
+      assert :ok == res_ok
+      assert :error == res_err
+      assert String.contains?(razon, "crear_moneda")
+    end
+
+    test "efectuar_comando con editar_moneda" do
+      {:ok, moneda} = Moneda.crear_moneda("EUR", "1.18")
+      flags_ok = %{"comando" => "editar_moneda", "id" => "#{moneda.id}", "p" => "1.20"}
+      {res_ok, _} = CLI.efectuar_comando(flags_ok)
+      flags_err = %{"comando" => "editar_moneda", "id" => "9999", "p" => "1.20"}
+      {res_err, razon} = CLI.efectuar_comando(flags_err)
+
+      assert :ok == res_ok
+      assert :error == res_err
+      assert String.contains?(razon, "editar_moneda")
+    end
+
+    test "efectuar_comando con comando borrar_moneda" do
+      {:ok, moneda} = Moneda.crear_moneda("EUR", "1.18")
+      flags_ok = %{"comando" => "borrar_moneda", "id" => "#{moneda.id}"}
+      {res_ok, _} = CLI.efectuar_comando(flags_ok)
+      flags_err = %{"comando" => "borrar_moneda", "id" => "9999"}
+      {res_err, razon} = CLI.efectuar_comando(flags_err)
+
+      assert :ok == res_ok
+      assert :error == res_err
+      assert String.contains?(razon, "borrar_moneda")
+    end
+
+    test "efectuar_comando con ver_moneda" do
+      {:ok, moneda} = Moneda.crear_moneda("EUR", "1.18")
+      flags_ok = %{"comando" => "ver_moneda", "id" => "#{moneda.id}", "o" => "stdout"}
+      {res_ok, _} = CLI.efectuar_comando(flags_ok)
+      flags_err = %{"comando" => "ver_moneda", "id" => "9999", "o" => "stdout"}
+      {res_err, razon} = CLI.efectuar_comando(flags_err)
+
+      assert :ok == res_ok
+      assert :error == res_err
+      assert String.contains?(razon, "ver_moneda")
+    end
+
+    test "efectuar_comando con comando alta_cuenta" do
+      {:ok, usuario} = Usuario.crear_usuario("userA", "1990-05-06")
+      {:ok, moneda} = Moneda.crear_moneda("EUR", "1.18")
+
+      flags_ok = %{
+        "comando" => "alta_cuenta",
+        "u" => "#{usuario.id}",
+        "m" => "#{moneda.id}",
+        "a" => "5"
+      }
+
+      {res_ok, _} = CLI.efectuar_comando(flags_ok)
+
+      flags_err = %{
+        "comando" => "alta_cuenta",
+        "u" => "9999",
+        "m" => "#{moneda.id}",
+        "a" => "5"
+      }
+
+      {res_err, razon} = CLI.efectuar_comando(flags_err)
+
+      assert :ok == res_ok
+      assert :error == res_err
+      assert String.contains?(razon, "alta_cuenta")
+    end
+
+    test "efectuar_comando con comando realizar_swap" do
+      {:ok, usuario} = Usuario.crear_usuario("userA", "1990-05-06")
+      {:ok, moneda1} = Moneda.crear_moneda("EUR", "1.18")
+      {:ok, moneda2} = Moneda.crear_moneda("USDT", "1")
+      {:ok, _} = Transaccion.alta_cuenta(usuario.id, moneda1.id, 5)
+      {:ok, _} = Transaccion.alta_cuenta(usuario.id, moneda2.id, 5)
+
+      flags_ok = %{
+        "comando" => "realizar_swap",
+        "u" => "#{usuario.id}",
+        "mo" => "#{moneda1.id}",
+        "md" => "#{moneda2.id}",
+        "a" => "5"
+      }
+
+      {res_ok, _} = CLI.efectuar_comando(flags_ok)
+
+      flags_err = %{
+        "comando" => "realizar_swap",
+        "u" => "#{usuario.id}",
+        "mo" => "#{moneda1.id}",
+        "md" => "#{moneda2.id}",
+        "a" => "10"
+      }
+
+      {res_err, razon} = CLI.efectuar_comando(flags_err)
+      assert :ok == res_ok
+      assert :error == res_err
+      assert String.contains?(razon, "realizar_swap")
+    end
+
+    test "efectuar_comando con comando realizar_transferencia" do
+      {:ok, usuario1} = Usuario.crear_usuario("userA", "1990-05-06")
+      {:ok, usuario2} = Usuario.crear_usuario("userB", "1990-05-07")
+      {:ok, moneda} = Moneda.crear_moneda("EUR", "1.18")
+      {:ok, _} = Transaccion.alta_cuenta(usuario1.id, moneda.id, 5)
+      {:ok, _} = Transaccion.alta_cuenta(usuario2.id, moneda.id, 5)
+
+      flags_ok = %{
+        "comando" => "realizar_transferencia",
+        "o" => "#{usuario1.id}",
+        "d" => "#{usuario2.id}",
+        "m" => "#{moneda.id}",
+        "a" => "1"
+      }
+
+      {res_ok, _} = CLI.efectuar_comando(flags_ok)
+
+      flags_err = %{
+        "comando" => "realizar_transferencia",
+        "o" => "#{usuario1.id}",
+        "d" => "#{usuario2.id}",
+        "m" => "#{moneda.id}",
+        "a" => "10"
+      }
+
+      {res_err, razon} = CLI.efectuar_comando(flags_err)
+      assert :ok == res_ok
+      assert :error == res_err
+      assert String.contains?(razon, "realizar_transferencia")
+    end
+
+    test "efectuar_comando con comando ver_transaccion" do
+      {:ok, usuario} = Usuario.crear_usuario("userA", "1990-05-06")
+      {:ok, moneda} = Moneda.crear_moneda("EUR", "1.18")
+      {:ok, transaccion} = Transaccion.alta_cuenta(usuario.id, moneda.id, 5)
+
+      flags_ok = %{
+        "comando" => "ver_transaccion",
+        "id" => "#{transaccion.id}",
+        "o" => "stdout"
+      }
+
+      {res_ok, _} = CLI.efectuar_comando(flags_ok)
+
+      flags_err = %{
+        "comando" => "ver_transaccion",
+        "id" => "9999",
+        "o" => "stdout"
+      }
+
+      {res_err, razon} = CLI.efectuar_comando(flags_err)
+      assert :ok == res_ok
+      assert :error == res_err
+      assert String.contains?(razon, "ver_transaccion")
+    end
+
+    test "efectuar_comando con comando deshacer_transaccion" do
+      {:ok, usuario} = Usuario.crear_usuario("userA", "1990-05-06")
+      {:ok, moneda1} = Moneda.crear_moneda("EUR", "1.18")
+      {:ok, moneda2} = Moneda.crear_moneda("USDT", "1")
+      {:ok, _} = Transaccion.alta_cuenta(usuario.id, moneda1.id, 5)
+      {:ok, _} = Transaccion.alta_cuenta(usuario.id, moneda2.id, 5)
+      {:ok, transaccion} = Transaccion.realizar_swap(usuario.id, moneda1.id, moneda2.id, 5)
+
+      flags_ok = %{
+        "comando" => "deshacer_transaccion",
+        "id" => "#{transaccion.id}"
+      }
+
+      {res_ok, _} = CLI.efectuar_comando(flags_ok)
+
+      flags_err = %{
+        "comando" => "deshacer_transaccion",
+        "id" => "9999"
+      }
+
+      {res_err, razon} = CLI.efectuar_comando(flags_err)
+      assert :ok == res_ok
+      assert :error == res_err
+      assert String.contains?(razon, "deshacer_transaccion")
+    end
+  end
 end
