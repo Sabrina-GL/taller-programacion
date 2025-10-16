@@ -7,7 +7,7 @@ defmodule Ledger.FileHandler do
   alias Ledger.Moneda
 
   def mostrar_balance(balance, archivo) do
-    msg_balance = "BALANCE"
+    msg_balance = "✦ . ⁺ . ✦ BALANCE ✦ . ⁺ . ✦"
 
     cond do
       archivo == "stdout" -> IO.puts(msg_balance)

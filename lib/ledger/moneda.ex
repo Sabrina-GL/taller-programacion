@@ -55,21 +55,15 @@ defmodule Ledger.Moneda do
 
   def borrar_moneda(id) do
     with {:ok, moneda} <- obtener_moneda(id),
-         :ok <- puede_borrarse?(id) do
-      case Repo.delete(moneda) do
-        {:ok, _struct} -> {:ok, "Moneda borrada exitosamente"}
-        {:error, razon} -> {:error, razon}
-      end
+         :ok <- puede_borrarse?(id),
+         {:ok, _} <- Repo.delete(moneda) do
+      {:ok, "Moneda borrada exitosamente"}
     end
   end
 
   def ver_moneda(id, archivo) do
-    case obtener_moneda(id) do
-      {:error, razon} ->
-        {:error, razon}
-
-      {:ok, moneda} ->
-        {:ok, FileHandler.mostrar_moneda(moneda, archivo)}
+    with {:ok, moneda} <- obtener_moneda(id) do
+      {:ok, FileHandler.mostrar_moneda(moneda, archivo)}
     end
   end
 

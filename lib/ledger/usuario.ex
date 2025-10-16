@@ -40,48 +40,38 @@ defmodule Ledger.Usuario do
   end
 
   def editar_usuario(id, nuevo_nombre) do
-    case obtener_usuario(id) do
-      {:error, razon} ->
-        {:error, razon}
+    with {:ok, usuario} <- obtener_usuario(id) do
+      if nuevo_nombre == "" do
+        {:error, "El nombre es obligatorio"}
+      else
+        changeset =
+          usuario
+          |> editar_changeset(%{
+            nombre: nuevo_nombre
+          })
 
-      {:ok, usuario} ->
-        if nuevo_nombre == "" do
-          {:error, "El nombre es obligatorio"}
-        else
-          changeset =
-            usuario
-            |> editar_changeset(%{
-              nombre: nuevo_nombre
-            })
+        case Repo.update(changeset) do
+          {:ok, usuario} ->
+            {:ok, usuario}
 
-          case Repo.update(changeset) do
-            {:ok, usuario} ->
-              {:ok, usuario}
-
-            {:error, _razon} ->
-              {:error, FileHandler.extraer_error(changeset)}
-          end
+          {:error, _razon} ->
+            {:error, FileHandler.extraer_error(changeset)}
         end
+      end
     end
   end
 
   def borrar_usuario(id) do
     with {:ok, usuario} <- obtener_usuario(id),
-         :ok <- puede_borrarse(id) do
-      case Repo.delete(usuario) do
-        {:ok, _struct} -> {:ok, "Usuario borrado exitosamente"}
-        {:error, razon} -> {:error, razon}
-      end
+         :ok <- puede_borrarse(id),
+         {:ok, _} <- Repo.delete(usuario) do
+      {:ok, "Usuario borrado exitosamente"}
     end
   end
 
   def ver_usuario(id, archivo) do
-    case obtener_usuario(id) do
-      {:error, razon} ->
-        {:error, razon}
-
-      {:ok, usuario} ->
-        {:ok, FileHandler.mostrar_usuario(usuario, archivo)}
+    with {:ok, usuario} <- obtener_usuario(id) do
+      {:ok, FileHandler.mostrar_usuario(usuario, archivo)}
     end
   end
 

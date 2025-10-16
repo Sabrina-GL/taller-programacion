@@ -95,36 +95,32 @@ defmodule Ledger.Transaccion do
   end
 
   def deshacer_transaccion(transaccion_id) do
-    case Repo.get(Ledger.Transaccion, transaccion_id) do
-      nil ->
-        {:error, "Transaccion no encontrada"}
+    with {:ok, t} <- obtener_transaccion(transaccion_id) do
+      case t.tipo do
+        "alta" ->
+          {:error, "No se puede deshacer un alta de cuenta"}
 
-      t ->
-        case t.tipo do
-          "alta" ->
-            {:error, "No se puede deshacer un alta de cuenta"}
+        "swap" ->
+          case existe_cuenta?(t.cuenta_origen_id, t.moneda_destino_id) do
+            {:error, _} -> alta_cuenta_interna(t.cuenta_origen_id, t.moneda_destino_id, 0)
+            :ok -> nil
+          end
 
-          "swap" ->
-            case existe_cuenta?(t.cuenta_origen_id, t.moneda_destino_id) do
-              {:error, _} -> alta_cuenta_interna(t.cuenta_origen_id, t.moneda_destino_id, 0)
-              :ok -> nil
-            end
+          realizar_swap(t.cuenta_origen_id, t.moneda_destino_id, t.moneda_origen_id, t.monto)
 
-            realizar_swap(t.cuenta_origen_id, t.moneda_destino_id, t.moneda_origen_id, t.monto)
+        "transferencia" ->
+          case existe_cuenta?(t.cuenta_destino_id, t.moneda_origen_id) do
+            {:error, _} -> alta_cuenta_interna(t.cuenta_destino_id, t.moneda_id, 0)
+            :ok -> nil
+          end
 
-          "transferencia" ->
-            case existe_cuenta?(t.cuenta_destino_id, t.moneda_origen_id) do
-              {:error, _} -> alta_cuenta_interna(t.cuenta_destino_id, t.moneda_id, 0)
-              :ok -> nil
-            end
-
-            realizar_transferencia(
-              t.cuenta_destino_id,
-              t.cuenta_origen_id,
-              t.moneda_origen_id,
-              t.monto
-            )
-        end
+          realizar_transferencia(
+            t.cuenta_destino_id,
+            t.cuenta_origen_id,
+            t.moneda_origen_id,
+            t.monto
+          )
+      end
     end
   end
 

@@ -229,8 +229,4 @@ defmodule Ledger.CLI do
         {:error, "Valor inválido, debe ser un número"}
     end
   end
-
-  # defp efectuar_comando(_comando, _flags, _cuentas, _monedas) do
-  #   {:error, "El comando no es válido"}
-  # end
 end
