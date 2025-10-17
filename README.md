@@ -59,8 +59,8 @@ El sistema está compuesto por 3 entidades principales que se almacenan en la ba
 Almacena la información de los usuarios del sistema. La entidad tiene id (numérico), nombre de usuario (string), fecha de nacimiento
 (date), fecha de creación de usuario (date), fecha de edición del usuario.
 ```sql
-- id (PK)              
-- nombre (UNIQUE)     
+- id            
+- nombre   
 - fecha_nacimiento   
 - timestamps           -- Fechas de creación y modificación         
 ```
@@ -76,28 +76,28 @@ Almacena la información de los usuarios del sistema. La entidad tiene id (numé
 ### Monedas
 Almacena la información de las monedas del sistema. La entidad tiene id (numerico), nombre de moneda (string), precio en dolares
 (float), fecha de creación de moneda (date), fecha de edición de moneda (date).
-- id (PK)              
-- nombre (UNIQUE)     
+- id         
+- nombre  
 - precio_usd   
 - timestamps           -- Fechas de creación y modificación          
 ```
 
 **Validaciones:**
 * Id unico, primary key.
-* El precio no puede ser negativo.
 * El nombre de la moneda es único, no puede editarse, y debe ser de mínimo 3 letras y máximo 4.
 * La moneda puede borrarse, solo si no tiene ninguna transacción asociada.
+* El precio no puede ser negativo.
 * Todos los campos son obligatorios.
 
 ### Transacciones
 Almacena la información de las transacciones del sistema. La entidad tiene id (numerico), tipo (string), cuenta origen (foreign key a usuarios), cuenta destino (foreign key a usuarios), moneda origen (foreign_key a monedas), moneda destino (foreign key a monedas), monto (float), precio al momento de la transacción de la moneda origen, precio al momento de la transacción de la moneda destino, timestamp.
 ```sql
-- id (PK)                -- Identificador único
+- id                     -- Identificador único
 - tipo                   -- Tipo: "alta", "transferencia", "swap"
 - cuenta_origen_id (FK)→usuarios.id
-- cuenta_destino_id (FK)→usuarios.id -- Opcional para altas
+- cuenta_destino_id (FK)→usuarios.id -- nil para altas
 - moneda_origen_id (FK)→monedas.id
-- moneda_destino_id (FK)→monedas.id  -- Opcional para altas/transferencias
+- moneda_destino_id (FK)→monedas.id  -- nil para altas/transferencias
 - monto               
 - precio_moneda_origen 
 - precio_moneda_destino
@@ -227,6 +227,14 @@ El comando balance calculará el balance de una cuenta.
 * El flag *m* es opcional, si no se usa, se muestra el balance por cada moneda.
 * Si se usa el flag *m*, se muestra el balance total convertido al valor de esa moneda.
 * El flag *out* es opcional, si no se usa, se muestra la información por salida estándar.
+Ejemplos:
+```
+./ledger balance -c1=867
+```
+Lista por salida estándar el balance de todas las monedas del usuario 867.
+
+./ledger balance -c1=867 -m=BTC -out=result.txt
+Lista el balance del usuario 867 convertido a BTC y lo almacena en el archivo result.txt.
 
 ### Transacciones
 
@@ -248,7 +256,7 @@ Ejemplos:
 Lista por salida estándar todas las transacciones del sistema.
 
 ```
-./ledger transacciones -t=transac.csv -c1=345 -o=result.txt
+./ledger transacciones -t=transac.csv -c1=345 -out=result.txt
 ```
 Lista todas las transacciones del sistema que fueron realizadas desde la cuenta con id 345 y las almacena en el archivo result.txt
 
@@ -261,10 +269,3 @@ Lista todas las transacciones del sistema que fueron realizadas desde la cuenta 
  ```
   {:error, crear_usuario: El nombre ya está en uso}
  ```
-
-
-## Documentación
-
-Para documentación detallada de todos los módulos, funciones y tipos, se puede consultar la documentación completa en HexDocs:
-
-[https://hexdocs.pm/ledger/Ledger.html](https://hexdocs.pm/ledger/Ledger.html)
