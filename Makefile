@@ -24,7 +24,12 @@ escript:
 docker:
 	docker compose up -d
 
-# Comandos de base de datos - especificar entorno explícitamente
+docker-down:
+	docker compose down
+
+init: deps compile escript
+
+# Comandos de base de datos
 db-create:
 	$(MIX_DEV) ecto.create
 
@@ -34,17 +39,19 @@ db-migrate:
 db-drop:
 	$(MIX_DEV) ecto.drop
 
+db-start: db-create db-migrate
+
 db-reset: db-drop db-create db-migrate
 
 # Comandos de base de datos para test
-test-db-drop:
-	-$(MIX_TEST) ecto.drop
-
 test-db-create:
 	$(MIX_TEST) ecto.create
 
 test-db-migrate:
 	$(MIX_TEST) ecto.migrate
+
+test-db-drop:
+	-$(MIX_TEST) ecto.drop
 
 test-db-reset: test-db-drop test-db-create test-db-migrate
 

@@ -11,6 +11,7 @@ defmodule Ledger.Moneda do
     timestamps()
   end
 
+  # TODO: LA moneda puede valer 0
   def crear_moneda(nombre, precio_usd) do
     changeset =
       %__MODULE__{}

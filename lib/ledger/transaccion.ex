@@ -16,8 +16,7 @@ defmodule Ledger.Transaccion do
     timestamps()
   end
 
-  # TODO: agregar precio actual de cada moneda en la transaccion por si se edita
-
+  # TODO: Solo puede deshacerse una transaccion si es la última de lo/los usuarios asociados.
   def alta_cuenta(usuario, moneda, monto) do
     cond do
       monto <= 0 ->
@@ -206,8 +205,6 @@ defmodule Ledger.Transaccion do
     |> validate_required(:moneda_origen_id, message: "La moneda es obligatoria")
     |> validate_required(:monto, message: "El monto es obligatorio")
     |> validar_segun_tipo(attrs)
-
-    # |> changeset_hasta_seis_decimales([:monto, :precio_moneda_origen])
   end
 
   defp validar_segun_tipo(changeset, attrs) do
