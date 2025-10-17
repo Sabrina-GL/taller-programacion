@@ -1,4 +1,8 @@
 defmodule Ledger.Usuario do
+  @moduledoc """
+  Módulo para manejar usuarios en el sistema Ledger.
+  Proporciona funciones para crear, listar y gestionar usuarios.
+  """
   use Ecto.Schema
   import Ecto.Changeset
   alias Ledger.{Repo, FileHandler, Transaccion}
@@ -9,6 +13,15 @@ defmodule Ledger.Usuario do
     timestamps()
   end
 
+  @doc """
+  Crea un nuevo usuario con el nombre y la fecha de nacimiento proporcionados.
+  ## Parámetros
+  - `nombre`: Nombre del usuario.
+  - `fecha_nacimiento`: Fecha de nacimiento en formato ISO8601 (AAAA-MM-DD).
+  ## Retorno
+  - `{:ok, usuario}` si el usuario fue creado exitosamente.
+  - `{:error, razón}` si ocurrió algún error durante la creación.
+  """
   def crear_usuario(nombre, fecha_nacimiento) do
     case Date.from_iso8601(fecha_nacimiento) do
       {:ok, fecha} ->
@@ -32,6 +45,14 @@ defmodule Ledger.Usuario do
     end
   end
 
+  @doc """
+  Obtiene un usuario por su ID.
+  ## Parámetros
+  - `id`: ID del usuario.
+  ## Retorno
+  - `{:ok, usuario}` si el usuario fue encontrado.
+  - `{:error, razón}` si el usuario no fue encontrado.
+  """
   def obtener_usuario(id) do
     case Repo.get(Ledger.Usuario, id) do
       nil -> {:error, "Usuario no encontrado"}
@@ -39,6 +60,15 @@ defmodule Ledger.Usuario do
     end
   end
 
+  @doc """
+  Edita el nombre de un usuario existente.
+  ## Parámetros
+  - `id`: ID del usuario.
+  - `nuevo_nombre`: Nuevo nombre para el usuario.
+  ## Retorno
+  - `{:ok, usuario}` si el usuario fue editado exitosamente.
+  - `{:error, razón}` si ocurrió algún error durante la edición.
+  """
   def editar_usuario(id, nuevo_nombre) do
     with {:ok, usuario} <- obtener_usuario(id) do
       if nuevo_nombre == "" do
@@ -61,6 +91,14 @@ defmodule Ledger.Usuario do
     end
   end
 
+  @doc """
+  Borra un usuario por su ID.
+  ## Parámetros
+  - `id`: ID del usuario.
+  ## Retorno
+  - `{:ok, mensaje}` si el usuario fue borrado exitosamente.
+  - `{:error, razón}` si ocurrió algún error durante el borrado.
+  """
   def borrar_usuario(id) do
     with {:ok, usuario} <- obtener_usuario(id),
          :ok <- puede_borrarse(id),
@@ -69,6 +107,15 @@ defmodule Ledger.Usuario do
     end
   end
 
+  @doc """
+  Muestra la información de un usuario.
+  ## Parámetros
+  - `id`: ID del usuario.
+  - `archivo`: Archivo donde se mostrará la información o "stdout" para mostrar por salida estándar.
+  ## Retorno
+  - `{:ok, informacion}` si la información fue mostrada exitosamente.
+  - `{:error, razón}` si ocurrió algún error al obtener el usuario.
+  """
   def ver_usuario(id, archivo) do
     with {:ok, usuario} <- obtener_usuario(id) do
       {:ok, FileHandler.mostrar_usuario(usuario, archivo)}

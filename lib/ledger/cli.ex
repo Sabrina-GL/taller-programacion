@@ -61,15 +61,7 @@ defmodule Ledger.CLI do
   end
 
   @doc """
-  Efectúa el comando especificado en los flags utilizando las cuentas y monedas proporcionadas.
-
-  ## Parámetros
-  - `flags`: Mapa con los flags y el comando a ejecutar.
-  - `cuentas`: Mapa con las cuentas y sus balances.
-  - `monedas`: Mapa con las monedas y sus tasas de cambio.
-  ## Retorno
-  - `{:ok, resultado}` si el comando se ejecutó exitosamente, donde `resultado` es el resultado del comando.
-  - `{:error, razón}` si ocurrió algún error al ejecutar el comando.
+  Efectúa el comando especificado en flags["comando"] con sus respectivos parámetros.
   """
   def efectuar_comando(flags) do
     comando = flags["comando"]

@@ -1,4 +1,9 @@
 defmodule Ledger.Moneda do
+  @moduledoc """
+  Módulo para manejar monedas en el sistema Ledger.
+  Proporciona funciones para crear, listar y gestionar monedas.
+  """
+
   use Ecto.Schema
   import Ecto.Changeset
   import Ecto.Query
@@ -11,6 +16,15 @@ defmodule Ledger.Moneda do
     timestamps()
   end
 
+  @doc """
+  Crea una nueva moneda con el nombre y el precio en dólares proporcionados.
+  ## Parámetros
+  - `nombre`: Nombre de la moneda (3-4 caracteres).
+  - `precio_usd`: Precio de la moneda en dólares (número no negativo).
+  ## Retorno
+  - `{:ok, moneda}` si la moneda fue creada exitosamente.
+  - `{:error, razón}` si ocurrió algún error durante la creación.
+  """
   def crear_moneda(nombre, precio_usd) do
     changeset =
       %__MODULE__{}
@@ -28,6 +42,14 @@ defmodule Ledger.Moneda do
     end
   end
 
+  @doc """
+  Obtiene una moneda por su ID.
+  ## Parámetros
+  - `id`: ID de la moneda.
+  ## Retorno
+  - `{:ok, moneda}` si la moneda fue encontrada.
+  - `{:error, razón}` si la moneda no fue encontrada.
+  """
   def obtener_moneda(id) do
     case Repo.get(Ledger.Moneda, id) do
       nil -> {:error, "Moneda no encontrada"}
@@ -35,6 +57,15 @@ defmodule Ledger.Moneda do
     end
   end
 
+  @doc """
+  Edita el precio en dólares de una moneda existente.
+  ## Parámetros
+  - `id`: ID de la moneda.
+  - `nuevo_precio_usd`: Nuevo precio en dólares para la moneda.
+  ## Retorno
+  - `{:ok, moneda}` si la moneda fue editada exitosamente.
+  - `{:error, razón}` si ocurrió algún error durante la edición.
+  """
   def editar_moneda(id, nuevo_precio_usd) do
     with {:ok, moneda} <- obtener_moneda(id) do
       changeset =
@@ -53,6 +84,14 @@ defmodule Ledger.Moneda do
     end
   end
 
+  @doc """
+  Borra una moneda por su ID.
+  ## Parámetros
+  - `id`: ID de la moneda.
+  ## Retorno
+  - `{:ok, mensaje}` si la moneda fue borrada exitosamente.
+  - `{:error, razón}` si ocurrió algún error durante el borrado.
+  """
   def borrar_moneda(id) do
     with {:ok, moneda} <- obtener_moneda(id),
          :ok <- puede_borrarse?(id),
@@ -61,19 +100,59 @@ defmodule Ledger.Moneda do
     end
   end
 
+  @doc """
+  Muestra la información de una moneda.
+  ## Parámetros
+  - `id`: ID de la moneda.
+  - `archivo`: Archivo donde se mostrará la información o "stdout" para mostrar por salida estándar.
+  ## Retorno
+  - `{:ok, informacion}` si la información fue mostrada exitosamente.
+  - `{:error, razón}` si ocurrió algún error al obtener la moneda.
+  """
   def ver_moneda(id, archivo) do
     with {:ok, moneda} <- obtener_moneda(id) do
       {:ok, FileHandler.mostrar_moneda(moneda, archivo)}
     end
   end
 
+  @doc """
+  Cambia un monto de una moneda a otra utilizando sus precios en dólares.
+  ## Parámetros
+  - `monto`: Monto a convertir.
+  - `precio_origen`: Precio en dólares de la moneda de origen.
+  - `precio_destino`: Precio en dólares de la moneda de destino.
+  ## Retorno
+  - `{:ok, monto_convertido}` con el monto convertido.
+  """
   def cambiar_a_moneda(monto, precio_origen, precio_destino) do
     {:ok, monto * precio_origen / precio_destino}
   end
 
+  @doc """
+  Obtiene el nombre de una moneda por su ID.
+  ## Parámetros
+  - `id`: ID de la moneda.
+  ## Retorno
+  - `nombre` de la moneda si fue encontrada.
+  - `{:error, razón}` si la moneda no fue encontrada.
+  """
   def obtener_nombre(id) do
     with {:ok, moneda} <- obtener_moneda(id) do
       moneda.nombre
+    end
+  end
+
+  @doc """
+  Obtiene el precio en dólares de una moneda por su ID.
+  ## Parámetros
+  - `id`: ID de la moneda.
+  ## Retorno
+  - `precio_usd` de la moneda si fue encontrada.
+  - `{:error, razón}` si la moneda no fue encontrada.
+  """
+  def obtener_precio(id) do
+    with {:ok, moneda} <- obtener_moneda(id) do
+      moneda.precio_usd
     end
   end
 
@@ -115,12 +194,6 @@ defmodule Ledger.Moneda do
       :ok
     else
       {:error, "La moneda tiene transacciones asociadas"}
-    end
-  end
-
-  def obtener_precio(id) do
-    with {:ok, moneda} <- obtener_moneda(id) do
-      moneda.precio_usd
     end
   end
 end

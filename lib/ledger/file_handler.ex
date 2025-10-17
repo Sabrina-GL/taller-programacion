@@ -1,11 +1,19 @@
 defmodule Ledger.FileHandler do
   @moduledoc """
   Módulo para manejo de archivos y salida de datos en el sistema Ledger.
-  Proporciona funciones para leer archivos, mostrar líneas, balances y errores.
+  Proporciona funciones para mostrar información de entidades, balances y errores.
   """
 
   alias Ledger.Moneda
 
+  @doc """
+  Muestra el balance proporcionado en el archivo especificado o en la salida estándar.
+  ## Parámetros
+  - `balance`: Mapa con las monedas y sus respectivos montos.
+  - `archivo`: Archivo donde se mostrará el balance o "stdout" para mostrar por salida estándar.
+  ## Retorno
+  - `:ok` después de mostrar el balance.
+  """
   def mostrar_balance(balance, archivo) do
     msg_balance = "✦ . ⁺ . ✦ BALANCE ✦ . ⁺ . ✦"
 
@@ -19,6 +27,14 @@ defmodule Ledger.FileHandler do
     end)
   end
 
+  @doc """
+  Muestra la información de un usuario.
+  ## Parámetros
+  - `usuario`: Estructura del usuario.
+  - `archivo`: Archivo donde se mostrará la información o "stdout" para mostrar por salida estándar.
+  ## Retorno
+  - `informacion` mostrada.
+  """
   def mostrar_usuario(usuario, archivo) do
     informacion =
       """
@@ -38,6 +54,14 @@ defmodule Ledger.FileHandler do
     informacion
   end
 
+  @doc """
+  Muestra la información de una moneda.
+  ## Parámetros
+  - `moneda`: Estructura de la moneda.
+  - `archivo`: Archivo donde se mostrará la información o "stdout" para mostrar por salida estándar.
+  ## Retorno
+  - `informacion` mostrada.
+  """
   def mostrar_moneda(moneda, archivo) do
     informacion =
       """
@@ -56,6 +80,14 @@ defmodule Ledger.FileHandler do
     informacion
   end
 
+  @doc """
+  Muestra la información de una transacción.
+  ## Parámetros
+  - `transaccion`: Estructura de la transacción.
+  - `archivo`: Archivo donde se mostrará la información o "stdout" para mostrar por salida estándar.
+  ## Retorno
+  - `informacion` mostrada.
+  """
   def mostrar_transaccion(transaccion, archivo) do
     lineas = [
       "✦ . ⁺ . ✦ TRANSACCIÓN #{transaccion.id} ✦ . ⁺ . ✦",
@@ -79,10 +111,22 @@ defmodule Ledger.FileHandler do
     informacion
   end
 
+  @doc """
+  Muestra un error en la salida estándar.
+  ## Parámetros
+  - `razon`: Razón del error.
+  """
   def mostrar_error(razon) do
     IO.puts("{:error, " <> razon <> "}")
   end
 
+  @doc """
+  Extrae un mensaje de error de un changeset de Ecto.
+  ## Parámetros
+  - `changeset`: Changeset de Ecto.
+  ## Retorno
+  - `mensaje_error`: Mensaje de error extraído.
+  """
   def extraer_error(changeset) do
     mensaje_error =
       case changeset.errors do

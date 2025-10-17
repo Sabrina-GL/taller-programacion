@@ -8,13 +8,13 @@ defmodule Ledger do
   alias Ledger.{CLI, FileHandler}
 
   @doc """
-  Función principal de entrada para la línea de comandos.
-
+  Punto de entrada principal para la aplicación Ledger.
+  Inicializa la aplicación y procesa los comandos proporcionados.
   ## Parámetros
-  - `args`: Lista de argumentos de línea de comandos
+  - `args`: Lista de argumentos de línea de comandos.
   ## Retorno
-  - `{:ok, 0}` si la ejecución fue exitosa
-  - `{:error, razón}` si ocurrió algún error
+  - `{:ok, resultado}` si la aplicación se ejecutó exitosamente.
+  - `{:error, razón}` si ocurrió algún error durante la ejecución.
   """
   def main(args \\ System.argv()) do
     case Application.ensure_all_started(:ledger) do
@@ -29,6 +29,14 @@ defmodule Ledger do
     end
   end
 
+  @doc """
+  Procesa los comandos de línea de comandos.
+  ## Parámetros
+  - `args`: Lista de argumentos de línea de comandos.
+  ## Retorno
+  - `{:ok, resultado}` si los comandos fueron procesados exitosamente.
+  - `{:error, razón}` si ocurrió algún error durante el procesamiento.
+  """
   def procesar_comandos(args) do
     case CLI.procesar_argumentos(args) do
       {:error, razon} ->

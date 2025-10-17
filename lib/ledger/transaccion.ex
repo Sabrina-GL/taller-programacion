@@ -1,4 +1,9 @@
 defmodule Ledger.Transaccion do
+  @moduledoc """
+  Módulo para manejar transacciones en el sistema Ledger.
+  Proporciona funciones para crear, listar y gestionar transacciones.
+  """
+
   use Ecto.Schema
   import Ecto.Changeset
   import Ecto.Query
@@ -16,6 +21,16 @@ defmodule Ledger.Transaccion do
     timestamps()
   end
 
+  @doc """
+  Da de alta una cuenta para un usuario con una moneda y un monto inicial.
+  ## Parámetros
+  - `usuario`: ID del usuario.
+  - `moneda`: ID de la moneda.
+  - `monto`: Monto inicial para la cuenta (debe ser positivo).
+  ## Retorno
+  - `{:ok, transaccion}` si la cuenta fue dada de alta exitosamente.
+  - `{:error, razón}` si ocurrió algún error durante el alta.
+  """
   def alta_cuenta(usuario, moneda, monto) do
     cond do
       monto <= 0 ->
@@ -26,6 +41,17 @@ defmodule Ledger.Transaccion do
     end
   end
 
+  @doc """
+  Realiza una transferencia entre dos cuentas de usuarios.
+  ## Parámetros
+  - `cuenta_origen_id`: ID de la cuenta de origen (usuario).
+  - `cuenta_destino_id`: ID de la cuenta de destino (usuario).
+  - `moneda_id`: ID de la moneda utilizada en la transferencia.
+  - `monto`: Monto a transferir (debe ser positivo).
+  ## Retorno
+  - `{:ok, transaccion}` si la transferencia fue realizada exitosamente.
+  - `{:error, razón}` si ocurrió algún error durante la transferencia.
+  """
   def realizar_transferencia(cuenta_origen_id, cuenta_destino_id, moneda_id, monto) do
     with :ok <- validar_transferencia(cuenta_origen_id, cuenta_destino_id, moneda_id) do
       changeset =
@@ -49,6 +75,17 @@ defmodule Ledger.Transaccion do
     end
   end
 
+  @doc """
+  Realiza un swap entre dos monedas en la misma cuenta de un usuario.
+  ## Parámetros
+  - `cuenta_id`: ID de la cuenta (usuario).
+  - `moneda_origen_id`: ID de la moneda de origen.
+  - `moneda_destino_id`: ID de la moneda de destino.
+  - `monto`: Monto a swapear (debe ser positivo).
+  ## Retorno
+  - `{:ok, transaccion}` si el swap fue realizado exitosamente.
+  - `{:error, razón}` si ocurrió algún error durante el swap.
+  """
   def realizar_swap(
         cuenta_id,
         moneda_origen_id,
@@ -81,12 +118,29 @@ defmodule Ledger.Transaccion do
     end
   end
 
+  @doc """
+  Muestra la información de una transacción.
+  ## Parámetros
+  - `id`: ID de la transacción.
+  - `archivo`: Archivo donde se mostrará la información o "stdout" para mostrar por salida estándar.
+  ## Retorno
+  - `{:ok, informacion}` si la información fue mostrada exitosamente.
+  - `{:error, razón}` si ocurrió algún error al obtener la transacción.
+  """
   def ver_transaccion(id, archivo) do
     with {:ok, transaccion} <- obtener_transaccion(id) do
       {:ok, FileHandler.mostrar_transaccion(transaccion, archivo)}
     end
   end
 
+  @doc """
+  Deshace una transacción.
+  ## Parámetros
+  - `transaccion_id`: ID de la transacción a deshacer.
+  ## Retorno
+  - `{:ok, transaccion}` si la transacción fue deshecha exitosamente.
+  - `{:error, razón}` si ocurrió algún error al deshacer la transacción.
+  """
   def deshacer_transaccion(transaccion_id) do
     with {:ok, t} <- obtener_transaccion(transaccion_id),
          :ok <- es_la_ultima_transaccion_de_usuario?(transaccion_id, t.cuenta_origen_id) do
@@ -121,6 +175,20 @@ defmodule Ledger.Transaccion do
     end
   end
 
+  @doc """
+  Obtiene las transacciones entre dos cuentas.
+  ## Parámetros
+  - `cuenta_origen_id`: ID de la cuenta de origen.
+  - `cuenta_destino_id`: ID de la cuenta de destino.
+  ## Comportamiento
+  - Ambos "" → Todas las transacciones
+  - Solo origen → Transacciones donde la cuenta es origen
+  - Solo destino → Transacciones donde la cuenta es destino
+  - Ambos IDs → Transacciones específicas entre esas cuentas
+  ## Retorno
+  - `{:ok, transacciones}` si se obtuvieron las transacciones exitosamente.
+  - `{:error, razón}` si ocurrió algún error al obtener las transacciones.
+  """
   def obtener_transacciones(cuenta_origen_id, cuenta_destino_id) do
     with :ok <- validar_cuenta(cuenta_origen_id),
          :ok <- validar_cuenta(cuenta_destino_id) do
@@ -158,6 +226,16 @@ defmodule Ledger.Transaccion do
     end
   end
 
+  @doc """
+  Lista las transacciones entre dos cuentas.
+  ## Parámetros
+  - `cuenta_origen_id`: ID de la cuenta de origen.
+  - `cuenta_destino_id`: ID de la cuenta de destino.
+  - `archivo`: Archivo donde se mostrarán las transacciones.
+  ## Retorno
+  - `{:ok, transacciones}` si se obtuvieron las transacciones exitosamente.
+  - `{:error, razón}` si ocurrió algún error al obtener las transacciones.
+  """
   def listar_transacciones(c1, c2, o) do
     with {:ok, transacciones} <- obtener_transacciones(c1, c2) do
       Enum.each(transacciones, fn t ->
@@ -168,6 +246,19 @@ defmodule Ledger.Transaccion do
     end
   end
 
+  @doc """
+  Lista el balance de una cuenta.
+  ## Parámetros
+  - `cuenta_id`: ID de la cuenta.
+  - `moneda_id`: ID de la moneda.
+  - `archivo`: Archivo donde se mostrará el balance.
+  ## Comportamiento
+  - moneda_id "" → Balance en todas las monedas
+  - moneda_id específico → Balance solo en esa moneda
+  ## Retorno
+  - `{:ok, balance}` si se obtuvo el balance exitosamente.
+  - `{:error, razón}` si ocurrió algún error al obtener el balance.
+  """
   def listar_balance(cuenta_id, moneda_id, archivo) do
     balance = %{}
 
