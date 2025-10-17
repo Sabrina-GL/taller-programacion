@@ -67,11 +67,8 @@ defmodule Ledger.Moneda do
     end
   end
 
-  def cambiar_a_moneda(monto, moneda_origen_id, moneda_destino_id) do
-    with {:ok, moneda_origen} <- obtener_moneda(moneda_origen_id),
-         {:ok, moneda_destino} <- obtener_moneda(moneda_destino_id) do
-      {:ok, monto * moneda_origen.precio_usd / moneda_destino.precio_usd}
-    end
+  def cambiar_a_moneda(monto, precio_origen, precio_destino) do
+    {:ok, monto * precio_origen / precio_destino}
   end
 
   def obtener_nombre(id) do
@@ -118,6 +115,12 @@ defmodule Ledger.Moneda do
       :ok
     else
       {:error, "La moneda tiene transacciones asociadas"}
+    end
+  end
+
+  def obtener_precio(id) do
+    with {:ok, moneda} <- obtener_moneda(id) do
+      moneda.precio_usd
     end
   end
 end

@@ -11,6 +11,8 @@ defmodule Ledger.Transaccion do
     belongs_to(:cuenta_destino, Usuario)
     belongs_to(:moneda_origen, Moneda)
     belongs_to(:moneda_destino, Moneda)
+    field(:precio_moneda_origen, :float)
+    field(:precio_moneda_destino, :float)
     timestamps()
   end
 
@@ -35,8 +37,8 @@ defmodule Ledger.Transaccion do
           cuenta_origen_id: cuenta_origen_id,
           cuenta_destino_id: cuenta_destino_id,
           moneda_origen_id: moneda_id,
-          moneda_destino_id: moneda_id,
-          monto: monto
+          monto: monto,
+          precio_moneda_origen: Moneda.obtener_precio(moneda_id)
         })
 
       case Repo.insert(changeset) do
@@ -66,7 +68,9 @@ defmodule Ledger.Transaccion do
           cuenta_origen_id: cuenta_id,
           moneda_origen_id: moneda_origen_id,
           moneda_destino_id: moneda_destino_id,
-          monto: monto
+          monto: monto,
+          precio_moneda_origen: Moneda.obtener_precio(moneda_origen_id),
+          precio_moneda_destino: Moneda.obtener_precio(moneda_destino_id)
         })
 
       case Repo.insert(changeset) do
@@ -173,8 +177,8 @@ defmodule Ledger.Transaccion do
         |> Enum.reduce(balance, fn t, acc -> calcular_balance(acc, t, cuenta_id) end)
 
       if moneda_id != "" do
-        with {:ok, moneda} <- Moneda.obtener_moneda(moneda_id) do
-          balance_en_moneda = cambiar_balance_a_moneda(balance_actualizado, moneda.id)
+        with {:ok, _moneda} <- Moneda.obtener_moneda(moneda_id) do
+          balance_en_moneda = cambiar_balance_a_moneda(balance_actualizado, moneda_id)
           FileHandler.mostrar_balance(balance_en_moneda, archivo)
           {:ok, balance_en_moneda}
         end
@@ -191,7 +195,8 @@ defmodule Ledger.Transaccion do
       :tipo,
       :cuenta_origen_id,
       :moneda_origen_id,
-      :monto
+      :monto,
+      :precio_moneda_origen
     ])
     |> validate_required(
       :tipo,
@@ -201,6 +206,8 @@ defmodule Ledger.Transaccion do
     |> validate_required(:moneda_origen_id, message: "La moneda es obligatoria")
     |> validate_required(:monto, message: "El monto es obligatorio")
     |> validar_segun_tipo(attrs)
+
+    # |> changeset_hasta_seis_decimales([:monto, :precio_moneda_origen])
   end
 
   defp validar_segun_tipo(changeset, attrs) do
@@ -222,7 +229,7 @@ defmodule Ledger.Transaccion do
   defp validar_segun_tipo("transferencia", changeset, attrs) do
     changeset
     |> cast(attrs, [:cuenta_destino_id, :moneda_destino_id])
-    |> validate_required([:cuenta_destino_id, :moneda_destino_id])
+    |> validate_required(:cuenta_destino_id)
     |> validate_number(:monto,
       greater_than: 0,
       message: "El monto debe ser un número positivo"
@@ -230,13 +237,12 @@ defmodule Ledger.Transaccion do
     |> foreign_key_constraint(:cuenta_origen_id)
     |> foreign_key_constraint(:cuenta_destino_id)
     |> foreign_key_constraint(:moneda_origen_id)
-    |> foreign_key_constraint(:moneda_destino_id)
     |> validar_saldo_sufieciente()
   end
 
   defp validar_segun_tipo("swap", changeset, attrs) do
     changeset
-    |> cast(attrs, [:moneda_destino_id])
+    |> cast(attrs, [:moneda_destino_id, :precio_moneda_destino])
     |> validate_number(:monto,
       greater_than: 0,
       message: "El monto debe ser un número positivo"
@@ -245,6 +251,8 @@ defmodule Ledger.Transaccion do
     |> foreign_key_constraint(:moneda_origen_id)
     |> foreign_key_constraint(:moneda_destino_id)
     |> validar_saldo_sufieciente()
+
+    # |> changeset_hasta_seis_decimales([:precio_moneda_destino])
   end
 
   defp validar_segun_tipo(_, changeset, _attrs) do
@@ -267,7 +275,7 @@ defmodule Ledger.Transaccion do
     moneda_id = get_field(changeset, :moneda_origen_id)
     monto = get_field(changeset, :monto)
 
-    saldo = calcular_balance_para_moneda(usuario_id, moneda_id)
+    saldo = calcular_saldo_para_moneda(usuario_id, moneda_id)
 
     if saldo < monto do
       add_error(changeset, :monto, "Saldo insuficiente")
@@ -303,7 +311,8 @@ defmodule Ledger.Transaccion do
           tipo: "alta",
           cuenta_origen_id: usuario,
           moneda_origen_id: moneda,
-          monto: monto
+          monto: monto,
+          precio_moneda_origen: Moneda.obtener_precio(moneda)
         })
 
       case Repo.insert(changeset) do
@@ -341,54 +350,57 @@ defmodule Ledger.Transaccion do
     end
   end
 
-  defp calcular_balance_para_moneda(cuenta_id, moneda_id) do
+  defp calcular_saldo_para_moneda(cuenta_id, moneda_id) do
     with {:ok, transacciones_salientes} <- obtener_transacciones(cuenta_id, ""),
          {:ok, transacciones_entrantes} <- obtener_transacciones("", cuenta_id) do
-      balance = %{}
+      saldo = %{}
 
       (transacciones_salientes ++ transacciones_entrantes)
-      |> Enum.reduce(balance, fn t, acc -> calcular_balance(acc, t, cuenta_id) end)
+      |> Enum.reduce(saldo, fn t, acc -> calcular_balance(acc, t, cuenta_id) end)
       |> Map.get(moneda_id, 0.0)
     end
   end
 
   defp calcular_balance(balance, t, cuenta_id) do
+    monto_a_sumar = t.monto * t.precio_moneda_origen / Moneda.obtener_precio(t.moneda_origen_id)
+
     cond do
       t.tipo == "alta" ->
         balance_actualizado =
-          Map.update(balance, t.moneda_origen_id, t.monto, fn monto_actual ->
-            monto_actual + t.monto
+          Map.update(balance, t.moneda_origen_id, monto_a_sumar, fn monto_actual ->
+            monto_actual + monto_a_sumar
           end)
 
         balance_actualizado
 
       t.tipo == "transferencia" and t.cuenta_origen_id == cuenta_id ->
         balance_actualizado =
-          Map.update(balance, t.moneda_origen_id, t.monto, fn monto_actual ->
-            monto_actual - t.monto
+          Map.update(balance, t.moneda_origen_id, -monto_a_sumar, fn monto_actual ->
+            monto_actual - monto_a_sumar
           end)
 
         balance_actualizado
 
       t.tipo == "transferencia" and t.cuenta_destino_id == cuenta_id ->
         balance_actualizado =
-          Map.update(balance, t.moneda_origen_id, t.monto, fn monto_actual ->
-            monto_actual + t.monto
+          Map.update(balance, t.moneda_origen_id, monto_a_sumar, fn monto_actual ->
+            monto_actual + monto_a_sumar
           end)
 
         balance_actualizado
 
       t.tipo == "swap" ->
         balance_actualizado =
-          Map.update(balance, t.moneda_origen_id, t.monto, fn monto_actual ->
-            monto_actual - t.monto
+          Map.update(balance, t.moneda_origen_id, -t.monto, fn monto_actual ->
+            monto_actual - monto_a_sumar
           end)
-          |> Map.update(t.moneda_destino_id, t.monto, fn monto_actual ->
-            with {:ok, monto_cambiado} <-
-                   Moneda.cambiar_a_moneda(t.monto, t.moneda_origen_id, t.moneda_destino_id) do
-              monto_actual + monto_cambiado
+          |> Map.update(
+            t.moneda_destino_id,
+            t.monto * t.precio_moneda_origen / t.precio_moneda_destino,
+            fn monto_actual ->
+              monto_actual + t.monto * t.precio_moneda_origen / t.precio_moneda_destino
             end
-          end)
+          )
 
         balance_actualizado
 
@@ -401,7 +413,11 @@ defmodule Ledger.Transaccion do
     total =
       Enum.reduce(balance, 0.0, fn {moneda_actual_id, monto}, acc ->
         with {:ok, monto_cambiado} <-
-               Moneda.cambiar_a_moneda(monto, moneda_actual_id, moneda_id) do
+               Moneda.cambiar_a_moneda(
+                 monto,
+                 Moneda.obtener_precio(moneda_actual_id),
+                 Moneda.obtener_precio(moneda_id)
+               ) do
           acc + monto_cambiado
         end
       end)

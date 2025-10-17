@@ -9,6 +9,8 @@ defmodule Ledger.Repo.Migrations.CreateTransacciones do
       add :moneda_origen_id, references(:monedas, on_delete: :nothing), null: false
       add :moneda_destino_id, references(:monedas, on_delete: :nothing)
       add :monto, :float, null: false
+      add :precio_moneda_origen, :float
+      add :precio_moneda_destino, :float
       timestamps()
     end
 

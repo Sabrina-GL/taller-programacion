@@ -233,14 +233,14 @@ defmodule LedgerTest do
       {:ok, moneda1} = Moneda.crear_moneda("AAA", "1")
       {:ok, moneda2} = Moneda.crear_moneda("BBB", "2")
 
-      assert {:ok, 5} == Moneda.cambiar_a_moneda(10, moneda1.id, moneda2.id)
+      assert {:ok, 5} == Moneda.cambiar_a_moneda(10, moneda1.precio_usd, moneda2.precio_usd)
     end
 
     test "cambiar_a_moneda con montos decimales" do
       {:ok, moneda1} = Moneda.crear_moneda("AAA", "0.5")
       {:ok, moneda2} = Moneda.crear_moneda("BBB", "0.2")
 
-      assert {:ok, 0.25} == Moneda.cambiar_a_moneda(0.1, moneda1.id, moneda2.id)
+      assert {:ok, 0.25} == Moneda.cambiar_a_moneda(0.1, moneda1.precio_usd, moneda2.precio_usd)
     end
 
     test "obtener_nombre de moneda válida" do
@@ -754,6 +754,63 @@ defmodule LedgerTest do
       {:ok, usuario} = Usuario.crear_usuario("userA", "1990-05-06")
       {:ok, balance} = Transaccion.listar_balance(usuario.id, "", @archivo_tmp)
       assert balance == %{}
+    end
+
+    test "listar_balance con moneda editada despues de un alta_cuenta" do
+      {:ok, usuario} = Usuario.crear_usuario("userA", "1990-05-06")
+      {:ok, moneda} = Moneda.crear_moneda("EUR", "1.18")
+      {:ok, t} = Transaccion.alta_cuenta(usuario.id, moneda.id, 1)
+      {:ok, moneda_act} = Moneda.editar_moneda(moneda.id, "1.20")
+
+      capture_io(fn ->
+        {:ok, balance} = Transaccion.listar_balance(usuario.id, "", "stdout")
+        IO.inspect(balance[moneda_act.id])
+        assert t.precio_moneda_origen / moneda_act.precio_usd * t.monto == balance[moneda_act.id]
+      end)
+    end
+
+    test "listar_balance con moneda editada despues de un swap" do
+      {:ok, usuario} = Usuario.crear_usuario("userA", "1990-05-06")
+      {:ok, moneda1} = Moneda.crear_moneda("EUR", "1.18")
+      {:ok, moneda2} = Moneda.crear_moneda("USDT", "1")
+      {:ok, _} = Transaccion.alta_cuenta(usuario.id, moneda1.id, 5)
+      {:ok, t} = Transaccion.realizar_swap(usuario.id, moneda1.id, moneda2.id, 5)
+      {:ok, moneda1_act} = Moneda.editar_moneda(moneda1.id, "1.20")
+      {:ok, moneda2_act} = Moneda.editar_moneda(moneda2.id, "1.10")
+
+      capture_io(fn ->
+        {:ok, balance} = Transaccion.listar_balance(usuario.id, "", "stdout")
+
+        assert 0.0 == balance[moneda1_act.id]
+
+        monto_esperado = 5 * t.precio_moneda_origen / t.precio_moneda_destino
+        assert monto_esperado == balance[moneda2_act.id]
+      end)
+    end
+
+    test "listar_balance con moneda editada despues de una transferencia" do
+      {:ok, usuario1} = Usuario.crear_usuario("userA", "1990-05-06")
+      {:ok, usuario2} = Usuario.crear_usuario("userB", "1990-05-06")
+      {:ok, moneda} = Moneda.crear_moneda("EUR", "1.18")
+      {:ok, _} = Transaccion.alta_cuenta(usuario1.id, moneda.id, 5)
+      {:ok, _} = Transaccion.alta_cuenta(usuario2.id, moneda.id, 5)
+      {:ok, t} = Transaccion.realizar_transferencia(usuario1.id, usuario2.id, moneda.id, 1)
+      {:ok, moneda_act} = Moneda.editar_moneda(moneda.id, "1.20")
+
+      capture_io(fn ->
+        {:ok, balance1} = Transaccion.listar_balance(usuario1.id, "", "stdout")
+        {:ok, balance2} = Transaccion.listar_balance(usuario2.id, "", "stdout")
+
+        monto_esperado =
+          Float.round((5 - t.monto) * t.precio_moneda_origen / moneda_act.precio_usd, 3)
+
+        assert monto_esperado == Float.round(balance1[moneda_act.id], 3)
+
+        monto_esperado2 =
+          Float.round((5 + t.monto) * t.precio_moneda_origen / moneda_act.precio_usd, 3)
+
+        assert monto_esperado2 == Float.round(balance2[moneda_act.id], 3)
+      end)
     end
   end
 
