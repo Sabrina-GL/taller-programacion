@@ -1,7 +1,6 @@
 # TP2 - Ledger
 
-**Ledger es un sistema de libro contables que registra transacciones de
-diferentes monedas entre usuarios.**
+**Ledger es un sistema de libro contables que registra transacciones de diferentes monedas entre usuarios.**
 
 
 ## Comandos de configuración y desarrollo
@@ -57,7 +56,7 @@ El sistema está compuesto por 3 entidades principales que se almacenan en la ba
 
 ### Usuarios
 Almacena la información de los usuarios del sistema. La entidad tiene id (numérico), nombre de usuario (string), fecha de nacimiento
-(date), fecha de creación de usuario (date), fecha de edición del usuario.
+(date), fecha de creación de usuario, fecha de edición del usuario.
 ```sql
 - id            
 - nombre   
@@ -75,7 +74,8 @@ Almacena la información de los usuarios del sistema. La entidad tiene id (numé
 
 ### Monedas
 Almacena la información de las monedas del sistema. La entidad tiene id (numerico), nombre de moneda (string), precio en dolares
-(float), fecha de creación de moneda (date), fecha de edición de moneda (date).
+(float), fecha de creación de moneda, fecha de edición de moneda.
+```sql
 - id         
 - nombre  
 - precio_usd   
@@ -90,7 +90,7 @@ Almacena la información de las monedas del sistema. La entidad tiene id (numeri
 * Todos los campos son obligatorios.
 
 ### Transacciones
-Almacena la información de las transacciones del sistema. La entidad tiene id (numerico), tipo (string), cuenta origen (foreign key a usuarios), cuenta destino (foreign key a usuarios), moneda origen (foreign_key a monedas), moneda destino (foreign key a monedas), monto (float), precio al momento de la transacción de la moneda origen, precio al momento de la transacción de la moneda destino, timestamp.
+Almacena la información de las transacciones del sistema. La entidad tiene id (numerico), tipo (string), cuenta origen (foreign key a usuarios), cuenta destino (foreign key a usuarios), moneda origen (foreign_key a monedas), moneda destino (foreign key a monedas), monto (float), precio al momento de la transacción de la moneda origen, precio al momento de la transacción de la moneda destino, timestamps.
 ```sql
 - id                     -- Identificador único
 - tipo                   -- Tipo: "alta", "transferencia", "swap"
@@ -183,10 +183,10 @@ Almacena la información de las transacciones del sistema. La entidad tiene id (
 /ledger realizar_transferencia -o=<id-usuario-origen> -d=<id-usuario-destino> -
 m=<id-moneda> -a=<monto>
 ```
-* Deben existir los usuarios asiciados con id-usuario-origen e id-usuario-destino.
-* Debe existir una moneda aosciada con ese id-moneda.
-* Debe existir una cuenta ya asociada con id-usuario-origen e id-moneda.
-* Sino existe una cuenta asociada con id-usuario-destino e id-moneda, se le hace internamente un alta cuenta con monto 0 para poder realizar la transferencia.
+* Deben existir los usuarios asiciados con *id-usuario-origen* e *id-usuario-destino*.
+* Debe existir una moneda asociada con ese *id-moneda*.
+* Debe existir una cuenta ya asociada con *id-usuario-origen* e *id-moneda*.
+* Sino existe una cuenta asociada con *id-usuario-destino* e *id-moneda*, se le hace internamente un alta cuenta con monto 0 para poder realizar la transferencia.
 * El monto debe ser un número positivo.
 * La cuenta desde la que sea realiza la transferencia debe tener un saldo suficiente para realizarla.
 
@@ -194,10 +194,10 @@ m=<id-moneda> -a=<monto>
 ```
 ./ledger realizar_swap -u=<id-usuario> -mo=<id-moneda-origen> -md=<id-moneda-destino> -a=<monto>
 ```
-* Debe existir el usuario asiciado con id-usuario.
-* Deben existir las monedas aosciadas con id-moneda-origen e id-moneda-destino.
-* Debe existir una cuenta ya asociada con id-usuario e id-moneda-origen.
-* Sino existe una cuenta asociada con id-usuario e id-moneda-destino, se le hace internamente un alta cuenta con monto 0 para poder realizar el swap.
+* Debe existir el usuario asiciado con *id-usuario*.
+* Deben existir las monedas aosciadas con *id-moneda-origen* e *id-moneda-destino*.
+* Debe existir una cuenta ya asociada con *id-usuario* e *id-moneda-origen*.
+* Sino existe una cuenta asociada con *id-usuario* e *id-moneda-destino*, se le hace internamente un alta cuenta con monto 0 para poder realizar el swap.
 * El monto debe ser un número positivo.
 * La cuenta desde la que sea realiza el swap debe tener un saldo suficiente para realizarlo.
 
@@ -233,7 +233,9 @@ Ejemplos:
 ```
 Lista por salida estándar el balance de todas las monedas del usuario 867.
 
+```
 ./ledger balance -c1=867 -m=BTC -out=result.txt
+```
 Lista el balance del usuario 867 convertido a BTC y lo almacena en el archivo result.txt.
 
 ### Transacciones
@@ -260,12 +262,19 @@ Lista por salida estándar todas las transacciones del sistema.
 ```
 Lista todas las transacciones del sistema que fueron realizadas desde la cuenta con id 345 y las almacena en el archivo result.txt
 
-## Errores chequeados
- En caso de encontrar una incosistencia, se muestra el error con el siguiente formato:
- ```
- {:error, <comando>: <descripción del error>} . 
+## Errores
+En caso de encontrar una incosistencia, se muestra el error con el siguiente formato:
 ```
- Por ejemplo si se quiere dar de alta un usuario con un nombre que ya está en uso, se muestra:
- ```
-  {:error, crear_usuario: El nombre ya está en uso}
- ```
+{:error, <comando>: <descripción del error>} 
+```
+
+Por ejemplo si se quiere dar de alta un usuario con un nombre que ya está en uso, se muestra:
+```
+{:error, crear_usuario: El nombre ya está en uso}
+```
+
+## Documentación
+
+Para documentación detallada de todos los módulos, funciones y tipos, se puede consultar la documentación completa en HexDocs:
+
+https://hexdocs.pm/ledger_tp2/0.1.0/Ledger.html

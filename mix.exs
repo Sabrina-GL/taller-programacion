@@ -10,17 +10,19 @@ defmodule Ledger.MixProject do
       deps: deps(),
       escript: escript(),
       name: "Ledger",
-      source_url: "https://github.com/Sabrina-GL/taller-programacion/tree/tp1",
+      source_url: "https://github.com/Sabrina-GL/taller-programacion/tree/tp2",
       docs: [
         main: "Ledger",
         output: "docs",
         extras: ["README.md"]
       ],
       package: [
-        description: "Sistema de libro contable para transacciones multi-moneda",
+        name: "ledger_tp2",
+        description:
+          "Sistema de libro contable para transacciones multi-moneda desarrollado como trabajo práctico para la materia Taller de Programación.",
         licenses: ["MIT"],
         links: %{
-          "GitHub" => "https://github.com/Sabrina-GL/taller-programacion/tree/tp1"
+          "GitHub" => "https://github.com/Sabrina-GL/taller-programacion/tree/tp2"
         }
       ]
     ]

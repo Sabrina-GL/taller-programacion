@@ -1,9 +1,10 @@
 404.html
-Ledger.Balance.html
 Ledger.CLI.html
-Ledger.Currency.html
 Ledger.FileHandler.html
-Ledger.Transaction.html
+Ledger.Moneda.html
+Ledger.Repo.html
+Ledger.Transaccion.html
+Ledger.Usuario.html
 Ledger.html
 api-reference.html
 dist/html-Y223O6DN.js
@@ -13,8 +14,8 @@ dist/lato-latin-700-normal-2XVSBPG4.woff2
 dist/lato-latin-ext-400-normal-N27NCBWW.woff2
 dist/lato-latin-ext-700-normal-Q2L5DVMW.woff2
 dist/remixicon-QPNJX265.woff2
-dist/search_data-84814116.js
-dist/sidebar_items-6103E0C6.js
+dist/search_data-8186CA45.js
+dist/sidebar_items-2C949FAA.js
 index.html
 readme.html
 search.html

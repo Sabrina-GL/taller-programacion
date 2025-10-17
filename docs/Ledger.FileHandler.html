@@ -12,7 +12,7 @@
 
     <link rel="stylesheet" href="dist/html-elixir-RLZO5U2C.css" />
 
-    <script defer src="dist/sidebar_items-6103E0C6.js"></script>
+    <script defer src="dist/sidebar_items-2C949FAA.js"></script>
     <script defer src="docs_config.js"></script>
     <script defer src="dist/html-Y223O6DN.js"></script>
 
@@ -80,7 +80,7 @@ Ledger
 
     </h1>
 
-      <a href="https://github.com/Sabrina-GL/taller-programacion/tree/tp1/blob/main/lib/ledger/file_handler.ex#L1" title="View Source" class="icon-action" rel="help">
+      <a href="https://github.com/Sabrina-GL/taller-programacion/tree/tp2/blob/main/lib/ledger/file_handler.ex#L1" title="View Source" class="icon-action" rel="help">
         <i class="ri-code-s-slash-line" aria-hidden="true"></i>
         <span class="sr-only">View Source</span>
       </a>
@@ -90,7 +90,7 @@ Ledger
 
     <section id="moduledoc">
 <p>Módulo para manejo de archivos y salida de datos en el sistema Ledger.
-Proporciona funciones para leer archivos, mostrar líneas, balances y errores.</p>
+Proporciona funciones para mostrar información de entidades, balances y errores.</p>
     </section>
 
 </div>
@@ -109,21 +109,21 @@ Proporciona funciones para leer archivos, mostrar líneas, balances y errores.</
 
     <div class="summary-row">
       <div class="summary-signature">
-        <a href="#leer_archivo/1" data-no-tooltip="" translate="no">leer_archivo(archivo)</a>
+        <a href="#extraer_error/1" data-no-tooltip="" translate="no">extraer_error(changeset)</a>
 
       </div>
 
-        <div class="summary-synopsis"><p>Lee un archivo y devuelve su contenido como una lista de listas, donde cada sublista representa una línea dividida por punto y coma.</p></div>
+        <div class="summary-synopsis"><p>Extrae un mensaje de error de un changeset de Ecto.</p></div>
 
     </div>
 
     <div class="summary-row">
       <div class="summary-signature">
-        <a href="#mostrar_balance/4" data-no-tooltip="" translate="no">mostrar_balance(moneda, montos, monedas, archivo)</a>
+        <a href="#mostrar_balance/2" data-no-tooltip="" translate="no">mostrar_balance(balance, archivo)</a>
 
       </div>
 
-        <div class="summary-synopsis"><p>Muestra el balance de montos en diferentes monedas, convirtiéndolos a una moneda específica si se indica.</p></div>
+        <div class="summary-synopsis"><p>Muestra el balance proporcionado en el archivo especificado o en la salida estándar.</p></div>
 
     </div>
 
@@ -133,15 +133,37 @@ Proporciona funciones para leer archivos, mostrar líneas, balances y errores.</
 
       </div>
 
+        <div class="summary-synopsis"><p>Muestra un error en la salida estándar.</p></div>
+
     </div>
 
     <div class="summary-row">
       <div class="summary-signature">
-        <a href="#mostrar_linea/2" data-no-tooltip="" translate="no">mostrar_linea(linea, archivo)</a>
+        <a href="#mostrar_moneda/2" data-no-tooltip="" translate="no">mostrar_moneda(moneda, archivo)</a>
 
       </div>
 
-        <div class="summary-synopsis"><p>Muestra una línea en la salida estándar o la escribe en un archivo.</p></div>
+        <div class="summary-synopsis"><p>Muestra la información de una moneda.</p></div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#mostrar_transaccion/2" data-no-tooltip="" translate="no">mostrar_transaccion(transaccion, archivo)</a>
+
+      </div>
+
+        <div class="summary-synopsis"><p>Muestra la información de una transacción.</p></div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#mostrar_usuario/2" data-no-tooltip="" translate="no">mostrar_usuario(usuario, archivo)</a>
+
+      </div>
+
+        <div class="summary-synopsis"><p>Muestra la información de un usuario.</p></div>
 
     </div>
 
@@ -159,17 +181,17 @@ Proporciona funciones para leer archivos, mostrar líneas, balances y errores.</
     </h1>
 
     <div class="functions-list">
-<section class="detail" id="leer_archivo/1">
+<section class="detail" id="extraer_error/1">
 
   <div class="detail-header">
-    <a href="#leer_archivo/1" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
+    <a href="#extraer_error/1" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
       <i class="ri-link-m" aria-hidden="true"></i>
     </a>
     <div class="heading-with-actions">
-      <h1 class="signature" translate="no">leer_archivo(archivo)</h1>
+      <h1 class="signature" translate="no">extraer_error(changeset)</h1>
 
 
-        <a href="https://github.com/Sabrina-GL/taller-programacion/tree/tp1/blob/main/lib/ledger/file_handler.ex#L16" class="icon-action" rel="help" aria-label="View Source">
+        <a href="https://github.com/Sabrina-GL/taller-programacion/tree/tp2/blob/main/lib/ledger/file_handler.ex#L130" class="icon-action" rel="help" aria-label="View Source">
           <i class="ri-code-s-slash-line" aria-hidden="true"></i>
         </a>
 
@@ -178,20 +200,20 @@ Proporciona funciones para leer archivos, mostrar líneas, balances y errores.</
 
   <section class="docstring">
 
-<p>Lee un archivo y devuelve su contenido como una lista de listas, donde cada sublista representa una línea dividida por punto y coma.</p><h2 id="leer_archivo/1-parámetros" class="section-heading"><a href="#leer_archivo/1-parámetros" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Parámetros</span></h2><ul><li><code class="inline">archivo</code>: Ruta del archivo a leer.</li></ul><h2 id="leer_archivo/1-retorno" class="section-heading"><a href="#leer_archivo/1-retorno" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Retorno</span></h2><ul><li><code class="inline">{:ok, contenido}</code> si la lectura fue exitosa, donde <code class="inline">contenido</code> es una lista de listas.</li><li><code class="inline">{:error, razón}</code> si ocurrió un error al leer el archivo.</li></ul>
+<p>Extrae un mensaje de error de un changeset de Ecto.</p><h2 id="extraer_error/1-parámetros" class="section-heading"><a href="#extraer_error/1-parámetros" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Parámetros</span></h2><ul><li><code class="inline">changeset</code>: Changeset de Ecto.</li></ul><h2 id="extraer_error/1-retorno" class="section-heading"><a href="#extraer_error/1-retorno" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Retorno</span></h2><ul><li><code class="inline">mensaje_error</code>: Mensaje de error extraído.</li></ul>
   </section>
 </section>
-<section class="detail" id="mostrar_balance/4">
+<section class="detail" id="mostrar_balance/2">
 
   <div class="detail-header">
-    <a href="#mostrar_balance/4" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
+    <a href="#mostrar_balance/2" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
       <i class="ri-link-m" aria-hidden="true"></i>
     </a>
     <div class="heading-with-actions">
-      <h1 class="signature" translate="no">mostrar_balance(moneda, montos, monedas, archivo)</h1>
+      <h1 class="signature" translate="no">mostrar_balance(balance, archivo)</h1>
 
 
-        <a href="https://github.com/Sabrina-GL/taller-programacion/tree/tp1/blob/main/lib/ledger/file_handler.ex#L58" class="icon-action" rel="help" aria-label="View Source">
+        <a href="https://github.com/Sabrina-GL/taller-programacion/tree/tp2/blob/main/lib/ledger/file_handler.ex#L17" class="icon-action" rel="help" aria-label="View Source">
           <i class="ri-code-s-slash-line" aria-hidden="true"></i>
         </a>
 
@@ -200,7 +222,7 @@ Proporciona funciones para leer archivos, mostrar líneas, balances y errores.</
 
   <section class="docstring">
 
-<p>Muestra el balance de montos en diferentes monedas, convirtiéndolos a una moneda específica si se indica.</p><h2 id="mostrar_balance/4-parámetros" class="section-heading"><a href="#mostrar_balance/4-parámetros" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Parámetros</span></h2><ul><li><code class="inline">moneda</code>: Moneda a la cual se convertirán todos los montos. Si es una cadena vacía, se muestran los montos en sus monedas originales.</li><li><code class="inline">montos</code>: Lista de tuplas <code class="inline">{moneda, monto}</code> representando los montos en diferentes monedas.</li><li><code class="inline">monedas</code>: Mapa de tasas de cambio entre monedas.</li><li><code class="inline">archivo</code>: Ruta del archivo donde se escribirá el balance o &quot;stdout&quot; para salida estándar.</li></ul>
+<p>Muestra el balance proporcionado en el archivo especificado o en la salida estándar.</p><h2 id="mostrar_balance/2-parámetros" class="section-heading"><a href="#mostrar_balance/2-parámetros" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Parámetros</span></h2><ul><li><code class="inline">balance</code>: Mapa con las monedas y sus respectivos montos.</li><li><code class="inline">archivo</code>: Archivo donde se mostrará el balance o &quot;stdout&quot; para mostrar por salida estándar.</li></ul><h2 id="mostrar_balance/2-retorno" class="section-heading"><a href="#mostrar_balance/2-retorno" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Retorno</span></h2><ul><li><code class="inline">:ok</code> después de mostrar el balance.</li></ul>
   </section>
 </section>
 <section class="detail" id="mostrar_error/1">
@@ -213,7 +235,7 @@ Proporciona funciones para leer archivos, mostrar líneas, balances y errores.</
       <h1 class="signature" translate="no">mostrar_error(razon)</h1>
 
 
-        <a href="https://github.com/Sabrina-GL/taller-programacion/tree/tp1/blob/main/lib/ledger/file_handler.ex#L83" class="icon-action" rel="help" aria-label="View Source">
+        <a href="https://github.com/Sabrina-GL/taller-programacion/tree/tp2/blob/main/lib/ledger/file_handler.ex#L119" class="icon-action" rel="help" aria-label="View Source">
           <i class="ri-code-s-slash-line" aria-hidden="true"></i>
         </a>
 
@@ -222,20 +244,20 @@ Proporciona funciones para leer archivos, mostrar líneas, balances y errores.</
 
   <section class="docstring">
 
-
+<p>Muestra un error en la salida estándar.</p><h2 id="mostrar_error/1-parámetros" class="section-heading"><a href="#mostrar_error/1-parámetros" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Parámetros</span></h2><ul><li><code class="inline">razon</code>: Razón del error.</li></ul>
   </section>
 </section>
-<section class="detail" id="mostrar_linea/2">
+<section class="detail" id="mostrar_moneda/2">
 
   <div class="detail-header">
-    <a href="#mostrar_linea/2" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
+    <a href="#mostrar_moneda/2" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
       <i class="ri-link-m" aria-hidden="true"></i>
     </a>
     <div class="heading-with-actions">
-      <h1 class="signature" translate="no">mostrar_linea(linea, archivo)</h1>
+      <h1 class="signature" translate="no">mostrar_moneda(moneda, archivo)</h1>
 
 
-        <a href="https://github.com/Sabrina-GL/taller-programacion/tree/tp1/blob/main/lib/ledger/file_handler.ex#L40" class="icon-action" rel="help" aria-label="View Source">
+        <a href="https://github.com/Sabrina-GL/taller-programacion/tree/tp2/blob/main/lib/ledger/file_handler.ex#L65" class="icon-action" rel="help" aria-label="View Source">
           <i class="ri-code-s-slash-line" aria-hidden="true"></i>
         </a>
 
@@ -244,7 +266,51 @@ Proporciona funciones para leer archivos, mostrar líneas, balances y errores.</
 
   <section class="docstring">
 
-<p>Muestra una línea en la salida estándar o la escribe en un archivo.</p><h2 id="mostrar_linea/2-parámetros" class="section-heading"><a href="#mostrar_linea/2-parámetros" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Parámetros</span></h2><ul><li><code class="inline">linea</code>: Lista de elementos que conforman la línea.</li><li><code class="inline">archivo</code>: Ruta del archivo donde se escribirá la línea o &quot;stdout&quot; para salida estándar.</li></ul>
+<p>Muestra la información de una moneda.</p><h2 id="mostrar_moneda/2-parámetros" class="section-heading"><a href="#mostrar_moneda/2-parámetros" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Parámetros</span></h2><ul><li><code class="inline">moneda</code>: Estructura de la moneda.</li><li><code class="inline">archivo</code>: Archivo donde se mostrará la información o &quot;stdout&quot; para mostrar por salida estándar.</li></ul><h2 id="mostrar_moneda/2-retorno" class="section-heading"><a href="#mostrar_moneda/2-retorno" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Retorno</span></h2><ul><li><code class="inline">informacion</code> mostrada.</li></ul>
+  </section>
+</section>
+<section class="detail" id="mostrar_transaccion/2">
+
+  <div class="detail-header">
+    <a href="#mostrar_transaccion/2" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">mostrar_transaccion(transaccion, archivo)</h1>
+
+
+        <a href="https://github.com/Sabrina-GL/taller-programacion/tree/tp2/blob/main/lib/ledger/file_handler.ex#L91" class="icon-action" rel="help" aria-label="View Source">
+          <i class="ri-code-s-slash-line" aria-hidden="true"></i>
+        </a>
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+<p>Muestra la información de una transacción.</p><h2 id="mostrar_transaccion/2-parámetros" class="section-heading"><a href="#mostrar_transaccion/2-parámetros" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Parámetros</span></h2><ul><li><code class="inline">transaccion</code>: Estructura de la transacción.</li><li><code class="inline">archivo</code>: Archivo donde se mostrará la información o &quot;stdout&quot; para mostrar por salida estándar.</li></ul><h2 id="mostrar_transaccion/2-retorno" class="section-heading"><a href="#mostrar_transaccion/2-retorno" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Retorno</span></h2><ul><li><code class="inline">informacion</code> mostrada.</li></ul>
+  </section>
+</section>
+<section class="detail" id="mostrar_usuario/2">
+
+  <div class="detail-header">
+    <a href="#mostrar_usuario/2" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">mostrar_usuario(usuario, archivo)</h1>
+
+
+        <a href="https://github.com/Sabrina-GL/taller-programacion/tree/tp2/blob/main/lib/ledger/file_handler.ex#L38" class="icon-action" rel="help" aria-label="View Source">
+          <i class="ri-code-s-slash-line" aria-hidden="true"></i>
+        </a>
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+<p>Muestra la información de un usuario.</p><h2 id="mostrar_usuario/2-parámetros" class="section-heading"><a href="#mostrar_usuario/2-parámetros" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Parámetros</span></h2><ul><li><code class="inline">usuario</code>: Estructura del usuario.</li><li><code class="inline">archivo</code>: Archivo donde se mostrará la información o &quot;stdout&quot; para mostrar por salida estándar.</li></ul><h2 id="mostrar_usuario/2-retorno" class="section-heading"><a href="#mostrar_usuario/2-retorno" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Retorno</span></h2><ul><li><code class="inline">informacion</code> mostrada.</li></ul>
   </section>
 </section>
 
@@ -255,9 +321,9 @@ Proporciona funciones para leer archivos, mostrar líneas, balances y errores.</
       <p>
 
           <span class="line">
-            <a href="https://hex.pm/packages/ledger/0.1.0" class="footer-hex-package">Hex Package</a>
+            <a href="https://hex.pm/packages/ledger_tp2/0.1.0" class="footer-hex-package">Hex Package</a>
 
-            <a href="https://preview.hex.pm/preview/ledger/0.1.0">Hex Preview</a>
+            <a href="https://preview.hex.pm/preview/ledger_tp2/0.1.0">Hex Preview</a>
 
           </span>
 

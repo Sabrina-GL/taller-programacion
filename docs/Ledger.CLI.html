@@ -12,7 +12,7 @@
 
     <link rel="stylesheet" href="dist/html-elixir-RLZO5U2C.css" />
 
-    <script defer src="dist/sidebar_items-6103E0C6.js"></script>
+    <script defer src="dist/sidebar_items-2C949FAA.js"></script>
     <script defer src="docs_config.js"></script>
     <script defer src="dist/html-Y223O6DN.js"></script>
 
@@ -80,7 +80,7 @@ Ledger
 
     </h1>
 
-      <a href="https://github.com/Sabrina-GL/taller-programacion/tree/tp1/blob/main/lib/ledger/cli.ex#L1" title="View Source" class="icon-action" rel="help">
+      <a href="https://github.com/Sabrina-GL/taller-programacion/tree/tp2/blob/main/lib/ledger/cli.ex#L1" title="View Source" class="icon-action" rel="help">
         <i class="ri-code-s-slash-line" aria-hidden="true"></i>
         <span class="sr-only">View Source</span>
       </a>
@@ -109,11 +109,11 @@ Proporciona funciones para procesar argumentos y ejecutar comandos específicos.
 
     <div class="summary-row">
       <div class="summary-signature">
-        <a href="#efectuar_comando/3" data-no-tooltip="" translate="no">efectuar_comando(flags, cuentas, monedas)</a>
+        <a href="#efectuar_comando/1" data-no-tooltip="" translate="no">efectuar_comando(flags)</a>
 
       </div>
 
-        <div class="summary-synopsis"><p>Efectúa el comando especificado en los flags utilizando las cuentas y monedas proporcionadas.</p></div>
+        <div class="summary-synopsis"><p>Efectúa el comando especificado en flags[&quot;comando&quot;] con sus respectivos parámetros.</p></div>
 
     </div>
 
@@ -141,17 +141,17 @@ Proporciona funciones para procesar argumentos y ejecutar comandos específicos.
     </h1>
 
     <div class="functions-list">
-<section class="detail" id="efectuar_comando/3">
+<section class="detail" id="efectuar_comando/1">
 
   <div class="detail-header">
-    <a href="#efectuar_comando/3" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
+    <a href="#efectuar_comando/1" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
       <i class="ri-link-m" aria-hidden="true"></i>
     </a>
     <div class="heading-with-actions">
-      <h1 class="signature" translate="no">efectuar_comando(flags, cuentas, monedas)</h1>
+      <h1 class="signature" translate="no">efectuar_comando(flags)</h1>
 
 
-        <a href="https://github.com/Sabrina-GL/taller-programacion/tree/tp1/blob/main/lib/ledger/cli.ex#L56" class="icon-action" rel="help" aria-label="View Source">
+        <a href="https://github.com/Sabrina-GL/taller-programacion/tree/tp2/blob/main/lib/ledger/cli.ex#L66" class="icon-action" rel="help" aria-label="View Source">
           <i class="ri-code-s-slash-line" aria-hidden="true"></i>
         </a>
 
@@ -160,7 +160,7 @@ Proporciona funciones para procesar argumentos y ejecutar comandos específicos.
 
   <section class="docstring">
 
-<p>Efectúa el comando especificado en los flags utilizando las cuentas y monedas proporcionadas.</p><h2 id="efectuar_comando/3-parámetros" class="section-heading"><a href="#efectuar_comando/3-parámetros" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Parámetros</span></h2><ul><li><code class="inline">flags</code>: Mapa con los flags y el comando a ejecutar.</li><li><code class="inline">cuentas</code>: Mapa con las cuentas y sus balances.</li><li><code class="inline">monedas</code>: Mapa con las monedas y sus tasas de cambio.</li></ul><h2 id="efectuar_comando/3-retorno" class="section-heading"><a href="#efectuar_comando/3-retorno" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Retorno</span></h2><ul><li><code class="inline">{:ok, resultado}</code> si el comando se ejecutó exitosamente, donde <code class="inline">resultado</code> es el resultado del comando.</li><li><code class="inline">{:error, razón}</code> si ocurrió algún error al ejecutar el comando.</li></ul>
+<p>Efectúa el comando especificado en flags[&quot;comando&quot;] con sus respectivos parámetros.</p>
   </section>
 </section>
 <section class="detail" id="procesar_argumentos/1">
@@ -173,7 +173,7 @@ Proporciona funciones para procesar argumentos y ejecutar comandos específicos.
       <h1 class="signature" translate="no">procesar_argumentos(args)</h1>
 
 
-        <a href="https://github.com/Sabrina-GL/taller-programacion/tree/tp1/blob/main/lib/ledger/cli.ex#L16" class="icon-action" rel="help" aria-label="View Source">
+        <a href="https://github.com/Sabrina-GL/taller-programacion/tree/tp2/blob/main/lib/ledger/cli.ex#L34" class="icon-action" rel="help" aria-label="View Source">
           <i class="ri-code-s-slash-line" aria-hidden="true"></i>
         </a>
 
@@ -193,9 +193,9 @@ Proporciona funciones para procesar argumentos y ejecutar comandos específicos.
       <p>
 
           <span class="line">
-            <a href="https://hex.pm/packages/ledger/0.1.0" class="footer-hex-package">Hex Package</a>
+            <a href="https://hex.pm/packages/ledger_tp2/0.1.0" class="footer-hex-package">Hex Package</a>
 
-            <a href="https://preview.hex.pm/preview/ledger/0.1.0">Hex Preview</a>
+            <a href="https://preview.hex.pm/preview/ledger_tp2/0.1.0">Hex Preview</a>
 
           </span>
 
