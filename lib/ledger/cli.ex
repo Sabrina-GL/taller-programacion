@@ -81,8 +81,11 @@ defmodule Ledger.CLI do
   end
 
   defp efectuar_comando("transacciones", flags) do
-    with {:ok, c1} <- parsear_id(flags, "c1"),
-         {:ok, c2} <- parsear_id(flags, "c2") do
+    flag_c1 = Map.get(flags, "c1", "")
+    flag_c2 = Map.get(flags, "c2", "")
+
+    with {:ok, c1} <- if(flag_c1 != "", do: parsear_id(flags, "c1"), else: {:ok, ""}),
+         {:ok, c2} <- if(flag_c2 != "", do: parsear_id(flags, "c2"), else: {:ok, ""}) do
       Ledger.Transaccion.listar_transacciones(c1, c2, Map.get(flags, "out", "stdout"))
     end
   end

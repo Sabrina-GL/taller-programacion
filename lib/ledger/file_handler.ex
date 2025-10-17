@@ -66,7 +66,7 @@ defmodule Ledger.FileHandler do
       if(transaccion.moneda_destino_id, do: "Moneda Destino: #{transaccion.moneda_destino_id}"),
       "Monto: #{:io_lib.format("~.6f", [transaccion.monto]) |> to_string()}",
       "Creado: #{NaiveDateTime.to_iso8601(transaccion.inserted_at)}",
-      "Modificado: #{NaiveDateTime.to_iso8601(transaccion.updated_at)}"
+      "Modificado: #{NaiveDateTime.to_iso8601(transaccion.updated_at)}\n"
     ]
 
     informacion = lineas |> Enum.filter(& &1) |> Enum.join("\n")
