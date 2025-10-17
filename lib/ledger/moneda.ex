@@ -11,7 +11,6 @@ defmodule Ledger.Moneda do
     timestamps()
   end
 
-  # TODO: LA moneda puede valer 0
   def crear_moneda(nombre, precio_usd) do
     changeset =
       %__MODULE__{}
@@ -85,8 +84,8 @@ defmodule Ledger.Moneda do
     |> validate_required(:precio_usd, message: "El precio en dólares es obligatorio")
     |> unique_constraint(:nombre)
     |> validate_number(:precio_usd,
-      greater_than: 0,
-      message: "El precio debe ser un número positivo"
+      greater_than_or_equal_to: 0,
+      message: "El precio debe ser un número mayor o igual a 0"
     )
     |> validate_format(:nombre, ~r/^[A-Z]{3,4}$/,
       message: "El nombre de la moneda debe tener entre 3 y 4 caracteres"

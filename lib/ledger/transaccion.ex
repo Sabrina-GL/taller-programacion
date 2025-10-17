@@ -16,7 +16,6 @@ defmodule Ledger.Transaccion do
     timestamps()
   end
 
-  # TODO: Solo puede deshacerse una transaccion si es la última de lo/los usuarios asociados.
   def alta_cuenta(usuario, moneda, monto) do
     cond do
       monto <= 0 ->
@@ -89,7 +88,8 @@ defmodule Ledger.Transaccion do
   end
 
   def deshacer_transaccion(transaccion_id) do
-    with {:ok, t} <- obtener_transaccion(transaccion_id) do
+    with {:ok, t} <- obtener_transaccion(transaccion_id),
+         :ok <- es_la_ultima_transaccion_de_usuario?(transaccion_id, t.cuenta_origen_id) do
       case t.tipo do
         "alta" ->
           {:error, "No se puede deshacer un alta de cuenta"}
@@ -103,17 +103,20 @@ defmodule Ledger.Transaccion do
           realizar_swap(t.cuenta_origen_id, t.moneda_destino_id, t.moneda_origen_id, t.monto)
 
         "transferencia" ->
-          case existe_cuenta?(t.cuenta_destino_id, t.moneda_origen_id) do
-            {:error, _} -> alta_cuenta_interna(t.cuenta_destino_id, t.moneda_id, 0)
-            :ok -> nil
-          end
+          with :ok <-
+                 es_la_ultima_transaccion_de_usuario?(transaccion_id, t.cuenta_destino_id) do
+            case existe_cuenta?(t.cuenta_destino_id, t.moneda_origen_id) do
+              {:error, _} -> alta_cuenta_interna(t.cuenta_destino_id, t.moneda_id, 0)
+              :ok -> nil
+            end
 
-          realizar_transferencia(
-            t.cuenta_destino_id,
-            t.cuenta_origen_id,
-            t.moneda_origen_id,
-            t.monto
-          )
+            realizar_transferencia(
+              t.cuenta_destino_id,
+              t.cuenta_origen_id,
+              t.moneda_origen_id,
+              t.monto
+            )
+          end
       end
     end
   end
@@ -319,6 +322,24 @@ defmodule Ledger.Transaccion do
         {:error, _razon} ->
           {:error, FileHandler.extraer_error(changeset)}
       end
+    end
+  end
+
+  defp es_la_ultima_transaccion_de_usuario?(transaccion_id, usuario_id) do
+    id =
+      Repo.one(
+        from(t in Ledger.Transaccion,
+          where: t.cuenta_origen_id == ^usuario_id or t.cuenta_destino_id == ^usuario_id,
+          order_by: [desc: t.inserted_at, desc: t.id],
+          limit: 1,
+          select: t.id
+        )
+      )
+
+    cond do
+      # Id es nil si el usuario aún no tiene transacciones
+      id == nil or id == transaccion_id -> :ok
+      true -> {:error, "La transacción no es la última del usuario #{usuario_id}"}
     end
   end
 

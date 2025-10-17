@@ -137,10 +137,7 @@ defmodule LedgerTest do
       assert {:error, "El precio en dólares es obligatorio"} ==
                Moneda.crear_moneda("EUR", "")
 
-      assert {:error, "El precio debe ser un número positivo"} ==
-               Moneda.crear_moneda("EUR", "0")
-
-      assert {:error, "El precio debe ser un número positivo"} ==
+      assert {:error, "El precio debe ser un número mayor o igual a 0"} ==
                Moneda.crear_moneda("EUR", "-1")
     end
 
@@ -588,6 +585,19 @@ defmodule LedgerTest do
 
       assert {:error, "No se puede deshacer un alta de cuenta"} ==
                Transaccion.deshacer_transaccion(transaccion.id)
+    end
+
+    test "deshacer_transaccion no a la última transacción" do
+      {:ok, usuario} = Usuario.crear_usuario("userA", "1990-05-06")
+      {:ok, moneda1} = Moneda.crear_moneda("EUR", "1.18")
+      {:ok, moneda2} = Moneda.crear_moneda("USDT", "1")
+      {:ok, _} = Transaccion.alta_cuenta(usuario.id, moneda1.id, 5)
+      {:ok, _} = Transaccion.alta_cuenta(usuario.id, moneda2.id, 5)
+      {:ok, transaccion_swap} = Transaccion.realizar_swap(usuario.id, moneda1.id, moneda2.id, 5)
+      {:ok, _} = Transaccion.realizar_swap(usuario.id, moneda2.id, moneda1.id, 5)
+
+      assert {:error, "La transacción no es la última del usuario #{usuario.id}"} ==
+               Transaccion.deshacer_transaccion(transaccion_swap.id)
     end
 
     test "obtener_transacciones sin filtros" do
